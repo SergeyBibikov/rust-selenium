@@ -21,4 +21,9 @@ mod tests {
         let response = send_request(Method::POST, "wd/hub/session", headers, &body).unwrap();
         assert!(response.contains("sessionId"));
     }
+    #[test]
+    fn get_status(){
+        let response = send_request(Method::GET, "wd/hub/status", vec![], "").unwrap();
+        assert!(response.contains("Server is running"));
+    }
 }

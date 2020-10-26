@@ -69,14 +69,11 @@ Content-Length: 130\r
 }
 #[test]
 fn get_method() {
-    let del_req = "GET /hello/you HTTP/1.1\r\nHost: 127.0.0.1\r\nContent-Length: 130\r\n
-\r
-\r
-".to_string();
+    let del_req = "GET /hello/you HTTP/1.1\r\nHost: 127.0.0.1\r\nContent-Length: 130\r\n\r\n\r\n".to_string();
     assert_eq!(
         del_req,
         create_req(
-            Method::DELETE,
+            Method::GET,
             "hello/you",
             vec!["Content-Length: 130".to_string()],
             "{dsd}"
