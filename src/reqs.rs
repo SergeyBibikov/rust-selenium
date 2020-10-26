@@ -39,7 +39,7 @@ fn create_req(method: Method, path: &str, headers: Vec<String>, body: &str) -> S
 }
 
 fn read_response(mut stream: &TcpStream) -> Result<String,Box<dyn Error>> {
-    let bytes_num = stream.peek(&mut vec![0;8192]).unwrap();
+    let bytes_num = stream.peek(&mut vec![0;16384]).unwrap();
     let mut buff = vec![0;bytes_num];
     stream.read(&mut buff)?;
     let response = String::from_utf8(buff)?;
@@ -48,7 +48,7 @@ fn read_response(mut stream: &TcpStream) -> Result<String,Box<dyn Error>> {
 }
 
 #[test]
-fn it_works() {
+fn delete_method() {
     let del_req = "DELETE /hello/you HTTP/1.1\r
 Host: 127.0.0.1\r
 Content-Length: 130\r
@@ -57,6 +57,22 @@ Content-Length: 130\r
 "
     .to_string();
     //println!("{}",create_req(Method::DELETE,"hello/you",vec!["Content-Length: 130".to_string()],"{dsd}"));
+    assert_eq!(
+        del_req,
+        create_req(
+            Method::DELETE,
+            "hello/you",
+            vec!["Content-Length: 130".to_string()],
+            "{dsd}"
+        )
+    );
+}
+#[test]
+fn get_method() {
+    let del_req = "GET /hello/you HTTP/1.1\r\nHost: 127.0.0.1\r\nContent-Length: 130\r\n
+\r
+\r
+".to_string();
     assert_eq!(
         del_req,
         create_req(
