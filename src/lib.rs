@@ -1,4 +1,5 @@
 mod reqs;
 mod tests;
+mod structs;
 
-pub use reqs::*;
+pub(crate) use reqs::*;

@@ -1,6 +1,5 @@
 use std::io::{Read, Write};
 use std::net::TcpStream;
-//use std::string::String;
 use std::error::Error;
 
 pub enum Method {
@@ -8,13 +7,22 @@ pub enum Method {
     POST,
     DELETE,
 }
-pub fn send_request(method: Method, path: &str, headers: Vec<String>, body: &str)->Result<String,Box<dyn Error>> {
+pub(crate) fn send_request(method: Method, path: &str, headers: Vec<String>, body: &str)->Result<String,Box<dyn Error>> {
     let request = create_req(method, path, headers, body);
     let mut connection = TcpStream::connect("127.0.0.1:4444")?;
     connection.write(request.as_bytes())?;
     connection.flush()?;
     Ok(read_response(&connection)?)
     
+}
+
+pub fn resp_body(response: String)->Result<String,&'static str>{
+    let mut a = response.split("\r\n\r\n");
+    a.next();
+    if let Some(result) = a.next(){
+        return Ok(result.to_string())
+    } else {Err("Can't get the response body")}
+
 }
 
 fn create_req(method: Method, path: &str, headers: Vec<String>, body: &str) -> String {
@@ -47,16 +55,15 @@ fn read_response(mut stream: &TcpStream) -> Result<String,Box<dyn Error>> {
     Ok(response)
 }
 
+//TESTS FOR PRIVATE FUNCTIONS
 #[test]
-fn delete_method() {
-    let del_req = "DELETE /hello/you HTTP/1.1\r
-Host: 127.0.0.1\r
-Content-Length: 130\r
-\r
-\r
-"
-    .to_string();
-    //println!("{}",create_req(Method::DELETE,"hello/you",vec!["Content-Length: 130".to_string()],"{dsd}"));
+fn resp_body_extraction() {
+    let response = "I am the metadata\r\n\r\n{\"hi\":\"there\"}".to_string();
+    assert_eq!("{\"hi\":\"there\"}".to_string(),resp_body(response).unwrap());
+}
+#[test]
+fn delete_req_creation() {
+    let del_req = "DELETE /hello/you HTTP/1.1\r\nHost: 127.0.0.1\r\nContent-Length: 130\r\n\r\n\r\n".to_string();
     assert_eq!(
         del_req,
         create_req(
@@ -68,7 +75,7 @@ Content-Length: 130\r
     );
 }
 #[test]
-fn get_method() {
+fn get_req_creation() {
     let del_req = "GET /hello/you HTTP/1.1\r\nHost: 127.0.0.1\r\nContent-Length: 130\r\n\r\n\r\n".to_string();
     assert_eq!(
         del_req,
