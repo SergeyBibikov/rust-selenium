@@ -98,7 +98,7 @@ impl Browser{
     }
     pub fn close_browser(&mut self){
         send_request(Method::DELETE, &self.session_url, vec![], "").unwrap();
-        self.session_url = "".to_string();
+        self.session_url = String::from("");
     }
     fn cont_length_header(&self,content:&str)->Vec<String>{
         vec![format!("Content-Length:{}",content.len()+2)]
