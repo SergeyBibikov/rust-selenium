@@ -1,5 +1,6 @@
 use serde::{Serialize,Deserialize};
 use super::reqs::*;
+use std::collections::HashMap;
 
 #[derive(Serialize,Deserialize)]
 struct Value{
@@ -11,7 +12,7 @@ struct Value{
 struct Session{
     sessionId: String,
 }
-
+#[derive(Debug)]
 pub struct Browser{
     session_url: String, //The session/ url for constructing other urls
     go_to_url: String, //The url to a website of the test
@@ -45,23 +46,13 @@ pub struct Browser{
 }
 
 impl Browser{
-    pub fn start_session(browser: &str, os:&str)->Browser{
-        let req_body = serde_json::to_string(&serde_json::json!({
-            "capabilities": {
-                "alwaysMatch": {
-                    "platformName": os
-                },
-                "firstMatch": [
-                    {"browserName": browser}
-                ]
-            }
-        })).unwrap();
+    pub fn start_session(browser: &str, os:&str,args:Vec<&str>)->Browser{
+        let req_body = create_session_body_json(browser,os,args);
         let headers = vec![format!("Content-Length: {}",req_body.len()+2)];
         let response = send_request(Method::POST, "wd/hub/session", headers, &req_body).unwrap();
         let resp_body = resp_body(response).unwrap();
         let val: Value = serde_json::from_str(&resp_body).unwrap();
         let sess_id = val.value.sessionId;
-        //let sess_id = super::construct_sess_id(&session_id);
         Browser{
             session_url:format!("wd/hub/session/{}",sess_id),
             go_to_url: format!("wd/hub/session/{}/url",sess_id),
@@ -99,22 +90,52 @@ impl Browser{
         let body = format!(r#"{{"url":"{}"}}"#,url);
         send_request(Method::POST, &self.go_to_url, self.cont_length_header(&body), &body).unwrap();
     }
-    pub fn close_browser(&self){
+    pub fn get_link(&self)->String{
+        let resp = resp_body(send_request(Method::GET, &self.go_to_url, vec![], "").unwrap()).unwrap();
+        let temp_map:HashMap<&str,String> = serde_json::from_str(&resp).unwrap();
+        let a = temp_map.get("value").unwrap();
+        (*a).clone()
+    }
+    pub fn close_browser(&mut self){
         send_request(Method::DELETE, &self.session_url, vec![], "").unwrap();
+        self.session_url = "".to_string();
     }
     fn cont_length_header(&self,content:&str)->Vec<String>{
         vec![format!("Content-Length:{}",content.len()+2)]
     }
+        
 }
 
-/*TODO Обернуть в функцию surf::get и surf::post, чтобы она принимала &self.___url и url(сайта)
-Например:
-impl Browser{
-    pub fn open(&self, url::&str){
-        
+    fn create_session_body_json(browser:&str,os:&str, args:Vec<&str>)->String{
+            match browser{
+                "chrome"=> create_chrome_session(os,args),
+                _=>panic!("Sorry, so far only chrome is supported")
+            }
     }
-}
-*/
+    fn create_chrome_session(os:&str,args:Vec<&str>)->String{
+            let one=format!(r#"{{"capabilities": {{"alwaysMatch":{{"platformName":"{}"}}"#,os);
+            let args = gen_args(args);
+            let two=format!(r#"{},"firstMatch":[{{"browserName":"chrome","goog:chromeOptions":{{"args":{}}}}}]}}}}"#,one,args);
+            two//String::new()
+    }
+
+    fn gen_args(args:Vec<&str>)->String{
+            if args.len()==0{
+                return String::from("[]");
+            }
+            let mut result = String::from("[");
+            for arg in args{
+                result.push_str("\"");
+                result.push_str(arg);
+                result.push_str("\"");
+                result.push_str(",");
+            }
+            result.pop();
+            result.push_str("]");
+            result
+    }
+
+
 pub struct Element{
     element_id: String,
 }
@@ -125,28 +146,40 @@ pub struct Cookie{
 
 
 
-
-
 //TESTS
 
     #[test]
-    fn create_browser_struct() {
-        let browser = Browser::start_session("chrome", "windows");
-        let mut iter = browser.session_url.split("/");
+    fn create_session() {
+        let mut browser = Browser::start_session("chrome", "linux",vec!["--headless"]);
+        let mut sess:String; 
+        {let mut iter = browser.session_url.split("/");
         iter.next();
         iter.next();
         iter.next();
-        let sess = iter.next().unwrap();
+        sess = iter.next().unwrap().to_string();}
+        browser.close_browser();
+        
         assert_eq!(32,sess.len());
     }
     #[test]
     fn go_to_bash() {
-        let browser = Browser::start_session("chrome", "windows");
+        let mut browser = Browser::start_session("chrome", "linux",vec!["--headless"]);
         browser.open("https://bash.im");
+        let link= browser.get_link();
+        //println!("{}",link);
+        browser.close_browser();
+        assert_eq!(link.as_str(),"https://bash.im/");
     }
     #[test]
+    #[should_panic]
     fn close_browser() {
-        let browser = Browser::start_session("chrome", "windows");
-        browser.open("https://bash.im");
+        let mut browser = Browser::start_session("chrome", "linux",vec!["--headless"]);
+        browser.open("http://localhost:4444/wd/hub/status");
         browser.close_browser();
+        browser.get_link();
+    }
+    #[test]
+    fn args() {
+        let a = vec!["--headless","--window-size=800,400"];        
+        assert!(gen_args(a)==String::from("[\"--headless\",\"--window-size=800,400\"]"));
     }

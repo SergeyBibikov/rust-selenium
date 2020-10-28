@@ -34,9 +34,11 @@ fn create_req(method: Method, path: &str, headers: Vec<String>, body: &str) -> S
     request.push_str(path);
     request.push_str(" HTTP/1.1\r\n");
     request.push_str("Host: 127.0.0.1\r\n");
-    for h in headers {
-        request.push_str(&h);
-        request.push_str("\r\n");
+    if headers.len()>0{
+        for h in headers {
+            request.push_str(&h);
+            request.push_str("\r\n");
+        }
     }
     request.push_str("\r\n\r\n");
     match method {
