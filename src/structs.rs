@@ -133,6 +133,12 @@ impl Browser{
         }
         Ok(())
     }
+    pub fn get_title(&self)->String{
+        let json = resp_body(send_request(Method::GET, &self.title_url, vec![], "").unwrap()).unwrap();
+        let val:HashMap<&str,String> = serde_json::from_str(&json).unwrap();
+        let title = val.get("value").unwrap(); 
+        (*title).clone()
+    }
 
     fn cont_length_header(&self,content:&str)->Vec<String>{
         vec![format!("Content-Length:{}",content.len()+2)]
@@ -309,6 +315,13 @@ pub mod tests{
         let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless"]);
         br.open("https://vk.com/");
         assert_eq!(br.refresh(),Ok(()));
+        br.close_browser()
+    }
+    #[test]
+    fn get_title_test() {
+        let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless"]);
+        br.open("https://www.w3.org/TR/webdriver/");
+        assert_eq!(br.get_title(),String::from("WebDriver"));
         br.close_browser()
     }
 
