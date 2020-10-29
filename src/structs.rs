@@ -100,6 +100,20 @@ impl Browser{
         send_request(Method::DELETE, &self.session_url, vec![], "").unwrap();
         self.session_url = String::from("");
     }
+    pub fn get_timeouts(&self)->String{
+        resp_body(send_request(Method::GET, &self.timeouts_url, vec![], "").unwrap()).unwrap()
+    }
+    pub fn set_timeouts(&self, timeouts: &Timeouts)->Result<(),&str>{
+        let timeouts_json = serde_json::to_string(timeouts).unwrap();
+        if let Ok(mess)= send_request(Method::POST, &self.timeouts_url, self.cont_length_header(&timeouts_json), &timeouts_json){
+            if let Ok (body) = resp_body(mess){
+                if body.as_str() == r#"{"value":null}"#{
+                    return Ok(())
+                }
+            }
+        }
+        Err("The timeouts were not set correctly")
+    }
     fn cont_length_header(&self,content:&str)->Vec<String>{
         vec![format!("Content-Length:{}",content.len()+2)]
     }
@@ -144,6 +158,41 @@ pub struct Cookie{
     cookie_name:String,
 }
 
+#[allow(non_snake_case)]
+#[derive(Serialize,Deserialize,Debug,PartialEq)]
+pub struct Timeouts{
+    implicit:u32,
+    pageLoad:u32,
+    script:u32,
+}
+impl Timeouts{
+    ///Instantiates the Timeouts with all fields set
+    pub fn set_all (implicit: u32, page_load: u32,script:u32)->Timeouts{
+        Timeouts{
+            implicit,
+            pageLoad: page_load,
+            script
+        }
+    }
+    ///Instantiates the Timeouts with all fields == 0
+    pub fn new ()->Timeouts{
+        Timeouts{
+            implicit:0,
+            pageLoad: 0,
+            script:0,
+        }
+    }
+    pub fn set_implicit(&mut self,implicit:u32){
+        self.implicit=implicit;
+    }
+    pub fn set_page_load(&mut self,page_load:u32){
+        self.pageLoad=page_load;
+    }
+    pub fn set_script(&mut self,script:u32){
+        self.script=script;
+    }
+
+}
 
 
 //TESTS
@@ -182,4 +231,34 @@ pub struct Cookie{
     fn args() {
         let a = vec!["--headless","--window-size=800,400"];        
         assert!(gen_args(a)==String::from("[\"--headless\",\"--window-size=800,400\"]"));
+    }
+    #[test]
+    fn get_timeouts() {
+        let timeouts:String;
+        {
+            let mut br = Browser::start_session("chrome", "linux", vec!["--headless"]);
+            timeouts= br.get_timeouts();
+            dbg!(&timeouts);
+            br.close_browser();
+        }
+        assert!(timeouts.contains("value")&&timeouts.contains("implicit")&&timeouts.contains("pageLoad"));
+    }
+
+    #[test]
+    fn set_timeouts() {
+        let mut br = Browser::start_session("chrome", "linux", vec!["--headless"]);
+        let timeouts = Timeouts::set_all(1000, 3000, 300000);
+        assert!(br.set_timeouts(&timeouts)==Ok(()));
+        br.close_browser();
+    }
+    #[test]
+    fn check_timouts_init() {
+        let mut t = Timeouts::new();
+        assert_eq!(t,Timeouts{implicit:0,pageLoad:0,script:0});
+        t.set_implicit(1);
+        assert_eq!(t,Timeouts{implicit:1,pageLoad:0,script:0});
+        t.set_page_load(1);
+        assert_eq!(t,Timeouts{implicit:1,pageLoad:1,script:0});
+        t.set_script(1);
+        assert_eq!(t,Timeouts{implicit:1,pageLoad:1,script:1});
     }
