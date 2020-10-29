@@ -114,10 +114,29 @@ impl Browser{
         }
         Err("The timeouts were not set correctly")
     }
+    pub fn back(&self){
+        let body = r#"{"return":true}"#;
+        send_request(Method::POST,&self.back_url, self.cont_length_header(&body), &body).unwrap();
+    }
+    pub fn forward(&self){
+        let body = r#"{"forward":true}"#;
+        send_request(Method::POST,&self.forward_url, self.cont_length_header(&body), &body).unwrap();
+    }
+    pub fn refresh(&self)->Result<(),&str>{
+        let body = r#"{"refresh":true}"#;
+        if let Ok (mess) = send_request(Method::POST,&self.refresh_url, self.cont_length_header(&body), &body){
+            if let Ok (body) = resp_body(mess){
+                if body.as_str()!=r#"{"value":null}"#{
+                   return Err("The refresh did not succeed")
+                }
+            }
+        }
+        Ok(())
+    }
+
     fn cont_length_header(&self,content:&str)->Vec<String>{
         vec![format!("Content-Length:{}",content.len()+2)]
     }
-        
 }
 
     fn create_session_body_json(browser:&str,os:&str, args:Vec<&str>)->String{
@@ -148,7 +167,10 @@ impl Browser{
             result.push_str("]");
             result
     }
-
+/*
+TODO
+pub struct ChromeOptions{}
+*/
 
 pub struct Element{
     element_id: String,
@@ -197,10 +219,13 @@ impl Timeouts{
 
 //TESTS
 
+pub mod tests{
+    use super::*;
+    use std::env::*;
     #[test]
     fn create_session() {
-        let mut browser = Browser::start_session("chrome", "linux",vec!["--headless"]);
-        let mut sess:String; 
+        let mut browser = Browser::start_session("chrome", consts::OS,vec!["--headless"]);
+        let sess:String; 
         {let mut iter = browser.session_url.split("/");
         iter.next();
         iter.next();
@@ -212,17 +237,16 @@ impl Timeouts{
     }
     #[test]
     fn go_to_bash() {
-        let mut browser = Browser::start_session("chrome", "linux",vec!["--headless"]);
+        let mut browser = Browser::start_session("chrome", consts::OS,vec!["--headless"]);
         browser.open("https://bash.im");
         let link= browser.get_link();
-        //println!("{}",link);
         browser.close_browser();
         assert_eq!(link.as_str(),"https://bash.im/");
     }
     #[test]
     #[should_panic]
     fn close_browser() {
-        let mut browser = Browser::start_session("chrome", "linux",vec!["--headless"]);
+        let mut browser = Browser::start_session("chrome", consts::OS,vec!["--headless"]);
         browser.open("http://localhost:4444/wd/hub/status");
         browser.close_browser();
         browser.get_link();
@@ -236,9 +260,8 @@ impl Timeouts{
     fn get_timeouts() {
         let timeouts:String;
         {
-            let mut br = Browser::start_session("chrome", "linux", vec!["--headless"]);
+            let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless"]);
             timeouts= br.get_timeouts();
-            dbg!(&timeouts);
             br.close_browser();
         }
         assert!(timeouts.contains("value")&&timeouts.contains("implicit")&&timeouts.contains("pageLoad"));
@@ -246,7 +269,7 @@ impl Timeouts{
 
     #[test]
     fn set_timeouts() {
-        let mut br = Browser::start_session("chrome", "linux", vec!["--headless"]);
+        let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless"]);
         let timeouts = Timeouts::set_all(1000, 3000, 300000);
         assert!(br.set_timeouts(&timeouts)==Ok(()));
         br.close_browser();
@@ -262,3 +285,31 @@ impl Timeouts{
         t.set_script(1);
         assert_eq!(t,Timeouts{implicit:1,pageLoad:1,script:1});
     }
+    #[test]
+    fn back_test() {
+        let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless"]);
+        br.open("https://vk.com/");
+        br.open("https://bash.im/");
+        br.back();
+        assert_eq!(br.get_link(),String::from("https://vk.com/"));
+        br.close_browser()
+    }
+    #[test]
+    fn forward_test() {
+        let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless"]);
+        br.open("https://vk.com/");
+        br.open("https://bash.im/");
+        br.back();
+        br.forward();
+        assert_eq!(br.get_link(),String::from("https://bash.im/"));
+        br.close_browser()
+    }
+    #[test]
+    fn refresh_test() {
+        let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless"]);
+        br.open("https://vk.com/");
+        assert_eq!(br.refresh(),Ok(()));
+        br.close_browser()
+    }
+
+}
