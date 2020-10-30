@@ -139,12 +139,57 @@ impl Browser{
         let title = val.get("value").unwrap(); 
         (*title).clone()
     }
-
+    pub fn get_window_handle(&self)->String{
+        let resp = send_and_read_body(Method::GET, &self.window_url, vec![], "");
+        let map:HashMap<&str,&str> = serde_json::from_str(&resp).unwrap();
+        (map.get("value").unwrap()).to_string().clone()
+    }
+    pub fn get_window_handles(&self)->Vec<String>{
+       let mut result:Vec<String>=vec![];
+       let resp = send_and_read_body(Method::GET, &self.window_handles_url, vec![], "");
+       let map:HashMap<&str,Vec<String>> = serde_json::from_str(&resp).unwrap();
+       for i in map.get(&"value").unwrap(){
+        result.push(i.to_owned());
+       }
+       result
+    }
+    pub fn switch_to_window(&self, window_id: String)->Result<(),&str>{
+        let body = format!(r#"{{"handle":"{}"}}"#,window_id);
+        let resp = send_and_read_body(Method::POST, &self.window_url, self.cont_length_header(&body), &body);
+        if resp.as_str()==r#"{"value":null}"#{
+            Ok(())
+        }else{Err("The switch did not succeed")}
+    }
+    pub fn new_window(&self, window_type: NewWindowType)->(String,String){
+        let body = match window_type{
+            NewWindowType::Tab=>r#"{"type":"tab"}"#,
+            NewWindowType::Window=>r#"{"type":"window"}"#,
+        };
+        let resp=send_and_read_body(Method::POST, &self.window_new_url, self.cont_length_header(&body), &body);
+        println!("{}",resp);
+        let map: HashMap<&str,HashMap<&str,String>> = serde_json::from_str(&resp).unwrap();
+        let val = map.get(&"value").unwrap();
+        let handle = (*val).get("handle").unwrap().clone();
+        let wtype = (*val).get("type").unwrap().clone();
+        (handle,wtype)
+    }
+    pub fn close_window(&self)->Vec<String>{
+       let mut result:Vec<String>=vec![];
+       let resp = send_and_read_body(Method::DELETE, &self.window_url, vec![], "");
+       let map:HashMap<&str,Vec<String>> = serde_json::from_str(&resp).unwrap();
+       for i in map.get(&"value").unwrap(){
+        result.push(i.to_owned());
+       }
+       result        
+    }
     fn cont_length_header(&self,content:&str)->Vec<String>{
         vec![format!("Content-Length:{}",content.len()+2)]
     }
+    
 }
-
+    fn send_and_read_body(method: Method, path: &str, headers: Vec<String>, body: &str)->String{
+        resp_body(send_request(method, path, headers, body).unwrap()).unwrap()
+    }
     fn create_session_body_json(browser:&str,os:&str, args:Vec<&str>)->String{
             match browser{
                 "chrome"=> create_chrome_session(os,args),
@@ -155,7 +200,7 @@ impl Browser{
             let one=format!(r#"{{"capabilities": {{"alwaysMatch":{{"platformName":"{}"}}"#,os);
             let args = gen_args(args);
             let two=format!(r#"{},"firstMatch":[{{"browserName":"chrome","goog:chromeOptions":{{"args":{}}}}}]}}}}"#,one,args);
-            two//String::new()
+            two
     }
 
     fn gen_args(args:Vec<&str>)->String{
@@ -177,6 +222,10 @@ impl Browser{
 TODO
 pub struct ChromeOptions{}
 */
+pub enum NewWindowType{
+    Tab,
+    Window
+}
 
 pub struct Element{
     element_id: String,
@@ -242,12 +291,12 @@ pub mod tests{
         assert_eq!(32,sess.len());
     }
     #[test]
-    fn go_to_bash() {
+    fn go_to_vk() {
         let mut browser = Browser::start_session("chrome", consts::OS,vec!["--headless"]);
-        browser.open("https://bash.im");
+        browser.open("https://vk.com");
         let link= browser.get_link();
         browser.close_browser();
-        assert_eq!(link.as_str(),"https://bash.im/");
+        assert_eq!(link.as_str(),"https://vk.com/");
     }
     #[test]
     #[should_panic]
@@ -293,22 +342,26 @@ pub mod tests{
     }
     #[test]
     fn back_test() {
-        let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless"]);
+        let link: String;
+        {let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless"]);
         br.open("https://vk.com/");
-        br.open("https://bash.im/");
+        br.open("https://m.facebook.com/");
         br.back();
-        assert_eq!(br.get_link(),String::from("https://vk.com/"));
-        br.close_browser()
+        link = br.get_link();
+        br.close_browser();}
+        assert_eq!(link.as_str(),"https://vk.com/");
     }
     #[test]
     fn forward_test() {
-        let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless"]);
+        let link: String;
+        {let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless"]);
         br.open("https://vk.com/");
-        br.open("https://bash.im/");
+        br.open("https://m.facebook.com/");
         br.back();
         br.forward();
-        assert_eq!(br.get_link(),String::from("https://bash.im/"));
-        br.close_browser()
+        link = br.get_link();        
+        br.close_browser();}
+        assert_eq!(link.as_str(),"https://m.facebook.com/");
     }
     #[test]
     fn refresh_test() {
@@ -319,10 +372,60 @@ pub mod tests{
     }
     #[test]
     fn get_title_test() {
-        let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless"]);
+        let title:String;
+        {let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless"]);
         br.open("https://www.w3.org/TR/webdriver/");
-        assert_eq!(br.get_title(),String::from("WebDriver"));
-        br.close_browser()
+        title =br.get_title();
+        br.close_browser()}
+        assert_eq!(title,String::from("WebDriver"));
+        
     }
-
+    #[test]
+    fn window_handle() {
+        let handle: String;
+        {let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless"]);
+        br.open("https://vk.com");
+        handle = br.get_window_handle();
+        br.close_browser();}
+        assert!(handle.starts_with("CDwindow"));
+        
+    }
+    #[test]
+    fn switch_window(){
+        let res :Result<(),&str>;
+        let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless"]);
+        br.open("https://vk.com");
+        let handle = br.get_window_handle();
+        res = br.switch_to_window(handle);assert_eq!(Ok(()),res);
+        br.close_browser();
+    }
+    #[test]
+    fn get_handles() {
+        let handles;
+        {
+            let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless"]);
+            br.open("https://vk.com");
+            handles = br.get_window_handles();
+            br.close_browser();
+        }
+        assert_eq!(handles.len(),1);
+    }
+    #[test]
+    fn close_window() {
+        let handles;
+        {
+            let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless"]);
+            br.open("https://vk.com");
+            handles = br.close_window();
+            br.close_browser();
+        }
+        assert_eq!(handles.len(),0);
+    }
+    #[test]
+    fn new_window(){
+        let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless"]);
+        let wind = br.new_window(NewWindowType::Tab);
+        assert!(wind.1=="tab"&&br.get_window_handles().len()==2);
+        br.close_browser();
+    }
 }
