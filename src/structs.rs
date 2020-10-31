@@ -279,6 +279,28 @@ impl Browser{
         let map:HashMap<&str,String> = serde_json::from_str(&resp).unwrap();
         map.get("value").unwrap().clone()
     }
+    
+    /// Executes the sync fun in the browser. In case the argument is a string, it should be a raw string or should incluse escapes with d. quotes
+    /// For example, if the args list you want to pass is [5,"Jack", 15], the vector should be ["5",r#"Jack"#,"15"]
+    pub fn execute_sync(&self, script: &str, args: &Vec<&str>)->Result<String,String>{
+        let args = gen_script_args(args);
+        let body = format!(r#"{{"script":"{}","args":{}}}"#,script,args);
+        let resp = send_and_read_body(Method::POST, &self.execute_sync_url, self.cont_length_header(&body), &body);
+        if resp.contains("error"){
+            return Err(resp);
+        }
+        Ok(resp)
+    }
+    ///Executes the async fun in the browser. The args should be passed similarly to the execute_sync fn.
+    pub fn execute_async(&self, script: &str, args: &Vec<&str>)->Result<String,String>{
+        let args = gen_script_args(args);
+        let body = format!(r#"{{"script":"{}","args":{}}}"#,script,args);
+        let resp = send_and_read_body(Method::POST, &self.execute_async_url, self.cont_length_header(&body), &body);
+        if resp.contains("error"){
+            return Err(resp);
+        }
+        Ok(resp)
+    }
 
     fn cont_length_header(&self,content:&str)->Vec<String>{
         vec![format!("Content-Length:{}",content.len()+2)]
@@ -332,6 +354,17 @@ impl Browser{
             result.push_str("]");
             result
     }
+    fn gen_script_args(args:&Vec<&str>)->String{
+        if args.len()==0{
+            return String::from("[]");
+        }
+        let mut result = String::from("[");
+        let temp_result = args.join(",");
+        result.push_str(&temp_result);
+        result.push_str("]");
+        result
+    }
+    
 /*
 TODO
 pub struct ChromeOptions{}
@@ -372,6 +405,7 @@ impl WindowRect{
 pub struct Cookie{
     cookie_name:String,
 }
+
 
 #[allow(non_snake_case)]
 #[derive(Serialize,Deserialize,Debug,PartialEq)]
@@ -669,4 +703,16 @@ pub mod tests{
         br.close_browser();
         assert!(a.contains("html")&&a.contains("head"))
     }
+
+    #[test]
+    fn script_test() {
+        let script = "return 3+2";
+        let res = vec!["5",r#""Hello""#];
+        let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless"]);
+        let res = br.execute_sync(script, &res).unwrap();
+        br.close_browser();
+        assert!(res.contains("5"));
+    }
+    
+
 }
