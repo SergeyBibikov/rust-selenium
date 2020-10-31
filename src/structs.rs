@@ -153,12 +153,12 @@ impl Browser{
        }
        result
     }
-    pub fn switch_to_window(&self, window_id: String)->Result<(),&str>{
+    pub fn switch_to_window(&self, window_id: String)->Result<(),String>{
         let body = format!(r#"{{"handle":"{}"}}"#,window_id);
         let resp = send_and_read_body(Method::POST, &self.window_url, self.cont_length_header(&body), &body);
         if resp.as_str()==r#"{"value":null}"#{
             Ok(())
-        }else{Err("The switch did not succeed")}
+        }else{Err(resp)}
     }
     pub fn new_window(&self, window_type: NewWindowType)->(String,String){
         let body = match window_type{
@@ -190,6 +190,23 @@ impl Browser{
         }
         Ok(())
     }
+    pub fn switch_to_frame_by_element(&self, element:Element)->Result<(),String>{
+        let body = format!(r#"{{"id":{{"{}":"{}"}}}}"#,element.element_id,element.element_hash);
+        let resp = send_and_read_body(Method::POST, &self.frame_url, self.cont_length_header(&body), &body);
+        if resp.as_str()!=r#"{"value":null}"#{
+            return Err(resp);
+        }
+        Ok(())
+
+    }
+    pub fn switch_to_parent_frame(&self)->Result<(),String>{
+        let body = r#"{}"#;
+        let resp = send_and_read_body(Method::POST, &self.frame_parent_url, self.cont_length_header(&body), &body);
+        if resp.as_str()!=r#"{"value":null}"#{
+            return Err(resp);
+        }
+        Ok(())
+    }
     pub fn find_element(&self,loc_strategy:LocStrategy)->Element{
         let body = self.body_for_find_element(loc_strategy);
         let resp=send_and_read_body(Method::POST, &self.element_url, self.cont_length_header(&body), &body);
@@ -199,6 +216,7 @@ impl Browser{
         Element{
             element_id:res.0.clone(),
             element_hash:res.1.clone(),
+            element_url: format!("{}/element",self.session_url),
         }
     }
     pub fn find_elements(&self,loc_strategy:LocStrategy)->Vec<Element>{
@@ -207,17 +225,55 @@ impl Browser{
         let resp=send_and_read_body(Method::POST, &self.elements_url, self.cont_length_header(&body), &body);
         let map: HashMap<&str,Vec<HashMap<String,String>>> = serde_json::from_str(&resp).unwrap();
         let val = map.get(&"value").unwrap();
+        let element_url = format!("{}/element",self.session_url);
         for i in val{
+            let element_url = element_url.clone();
             let res = i.iter().next().unwrap();
             result.push(Element{
             element_id:res.0.clone(),
             element_hash:res.1.clone(),
+            element_url
             });
         }
         result
     }
+    pub fn get_window_rect(&self)->WindowRect{
+        let resp = send_and_read_body(Method::GET, &self.window_rect_url, vec![], "");
+        let map:HashMap<&str,WindowRect> = serde_json::from_str(&resp).unwrap();
+        map.get("value").unwrap().clone()
+    }
+    pub fn set_sindow_rect(&self, window_rect:&WindowRect)->Result<WindowRect,String>{
+        let body = serde_json::to_string(window_rect).unwrap();
+        let resp = send_and_read_body(Method::POST, &self.window_rect_url, self.cont_length_header(&body), &body);
+        let map:Result<HashMap<&str,WindowRect>,serde_json::Error> = serde_json::from_str(&resp);
+        match map{
+            Ok(cont)=>{
+                Ok(cont.get("value").unwrap().clone())
+            },
+            Err(message)=>Err(message.to_string()),
+        }
+                
+    }
+    pub fn maximize_window(&self)->Result<WindowRect,String>{
+        let body = r#"{}"#;
+        let resp = send_and_read_body(Method::POST, &self.window_maximize_url, self.cont_length_header(&body), &body);
+        if resp.contains("height")&&resp.contains("width"){
+            let map:HashMap<&str,WindowRect> = serde_json::from_str(&resp).unwrap();
+            Ok(map.get("value").unwrap().clone())
+        }else{Err(resp)}
 
-    //pub fn switch_to_frame_by_element(&self, element:Element){}
+    }
+    pub fn minimize_window(&self)->Result<WindowRect,String>{
+        let body = r#"{}"#;
+        let resp = send_and_read_body(Method::POST, &self.window_minimize_url, self.cont_length_header(&body), &body);
+        if resp.contains("height")&&resp.contains("width"){
+            let map:HashMap<&str,WindowRect> = serde_json::from_str(&resp).unwrap();
+            Ok(map.get("value").unwrap().clone())
+        }else{Err(resp)}
+    } 
+
+
+
     fn cont_length_header(&self,content:&str)->Vec<String>{
         vec![format!("Content-Length:{}",content.len()+2)]
     }
@@ -284,8 +340,22 @@ pub enum LocStrategy{
 pub struct Element{
     pub(self)element_id: String,
     pub(self)element_hash: String,
+    pub(self)element_url: String,
 }
 
+#[derive(Serialize,Deserialize,Debug,PartialEq,Clone)]
+pub struct WindowRect{
+    pub(self)height:i32,
+    pub(self)width:i32,
+    pub(self)x:i32,
+    pub(self)y:i32
+}
+
+impl WindowRect{
+    pub fn new(height:i32,width:i32,x:i32,y:i32)->WindowRect{
+        WindowRect{ height, width, x, y}
+    }
+}
 
 pub struct Cookie{
     cookie_name:String,
@@ -448,7 +518,7 @@ pub mod tests{
     }
     #[test]
     fn switch_window(){
-        let res :Result<(),&str>;
+        let res :Result<(),String>;
         let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless"]);
         br.open("https://vk.com");
         let handle = br.get_window_handle();
@@ -481,7 +551,6 @@ pub mod tests{
     fn new_window(){
         let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless"]);
         let wind = br.new_window(NewWindowType::Tab);
-        dbg!(&wind);
         assert!(wind.1=="tab"&&br.get_window_handles().len()==2);
         br.close_browser();
     }
@@ -495,7 +564,17 @@ pub mod tests{
 
     }
     #[test]
-    fn find_el() {
+    fn sw_t_fr_by_el() {
+        let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless"]);
+        br.open("https://vk.com");
+        let el = br.find_element(LocStrategy::CSS("#quick_login_frame"));
+        dbg!(&el);
+        let res = br.switch_to_frame_by_element(el);
+        br.close_browser();
+        assert_eq!(res,Ok(()));
+    }
+    #[test]
+    fn find_element() {
         let el;
         {
         let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless"]);
@@ -514,8 +593,40 @@ pub mod tests{
         el = br.find_elements(LocStrategy::CSS("article"));
         br.close_browser();
         }
-        dbg!(el);
-        //assert!(el.element_id.contains("element"))
+        assert!(el.len()>2);
+    }
+    #[test]
+    fn sw_to_par_fr() {
+        let res;
+        let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless"]);
+        br.open("https://vk.com");
+        res = br.switch_to_parent_frame();
+        br.close_browser(); 
+        assert_eq!(res, Ok(()));
+    }
+    #[test]
+    fn get_wind_rect() {
+        let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless","--window-size=400,200"]);
+        let wr = br.get_window_rect();
+        br.close_browser();
+        assert!(wr==WindowRect{height:200,width:400,x:0,y:0});
+    }
+    #[test]
+    fn set_wind_rect(){
+        let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless","--window-size=400,200"]);
+        let wr = WindowRect{height:600, width:1000,x:250,y:250};
+        let wr_new = br.set_sindow_rect(&wr).unwrap();
+        br.close_browser();
+        assert_eq!(wr,wr_new);
+        
+    }
+    #[test]
+    fn maximize() {
+        let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless","--window-size=400,200"]);
+        let a = br.maximize_window().unwrap();
+        br.close_browser();
+        let wr = WindowRect{height:200, width:400,x:0,y:0};
+        assert_eq!(a,wr);
     }
 
 }
