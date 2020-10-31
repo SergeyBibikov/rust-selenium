@@ -264,7 +264,15 @@ impl Browser{
             let res: WindowRect = serde_json::from_str(&resp).unwrap();
             Ok(res)
         }else{Err(resp)}
-    } 
+    }
+    pub fn fullscreen(&self)->Result<WindowRect,String>{
+        let body = r#"{}"#;
+        let resp = send_and_read_body(Method::POST, &self.window_fullscreen_url, self.cont_length_header(&body), &body);
+        let resp = parse_value(&resp);
+        if resp.contains("height"){
+            Ok(serde_json::from_str(&resp).unwrap())
+        } else {Err(resp)}
+    }
 
     fn cont_length_header(&self,content:&str)->Vec<String>{
         vec![format!("Content-Length:{}",content.len()+2)]
@@ -639,5 +647,12 @@ pub mod tests{
      }"#;
        let res = parse_value(resp);
        assert_eq!(res,"{\"dftg43rert34tert-34trte-243f-4\":{\"id\":333}}");
+    }
+    #[test]
+    fn fullsize() {
+        let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless","--window-size=400,200"]);
+        let a = br.fullscreen().unwrap();
+        br.close_browser();
+        assert!(a.x==0&&a.y==0)
     }
 }
