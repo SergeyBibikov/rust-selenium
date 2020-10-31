@@ -92,6 +92,7 @@ impl Browser{
     }
     pub fn get_link(&self)->String{
         let resp = resp_body(send_request(Method::GET, &self.go_to_url, vec![], "").unwrap()).unwrap();
+        dbg!(&resp);
         parse_value(&resp).replace("\"","")
     }
     pub fn close_browser(&mut self){
@@ -272,6 +273,11 @@ impl Browser{
         if resp.contains("height"){
             Ok(serde_json::from_str(&resp).unwrap())
         } else {Err(resp)}
+    }
+    pub fn source(&self)->String{
+        let resp = send_and_read_body(Method::GET, &self.source_url, vec![], "");
+        let map:HashMap<&str,String> = serde_json::from_str(&resp).unwrap();
+        map.get("value").unwrap().clone()
     }
 
     fn cont_length_header(&self,content:&str)->Vec<String>{
@@ -500,7 +506,7 @@ pub mod tests{
         let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless"]);
         br.open("https://vk.com/");
         assert_eq!(br.refresh(),Ok(()));
-        br.close_browser()
+        br.close_browser();
     }
     #[test]
     fn get_title_test() {
@@ -588,8 +594,7 @@ pub mod tests{
         el = br.find_element(LocStrategy::CSS("#criteo-syncframe"));
         br.close_browser();
         }
-        dbg!(&el);
-        assert!(el.element_id.contains("element"))
+        assert!(el.element_id.contains("element"));
     }
     #[test]
     fn find_els() {
@@ -653,6 +658,15 @@ pub mod tests{
         let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless","--window-size=400,200"]);
         let a = br.fullscreen().unwrap();
         br.close_browser();
-        assert!(a.x==0&&a.y==0)
+        assert!(a.x==0&&a.y==0);
+    }
+
+    #[test]
+    fn src() {
+        let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless","--window-size=400,200"]);
+        br.open("http://localhost:4444/wd/hub/status");
+        let a = br.source();
+        br.close_browser();
+        assert!(a.contains("html")&&a.contains("head"))
     }
 }
