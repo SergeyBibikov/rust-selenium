@@ -92,16 +92,15 @@ impl Browser{
     }
     pub fn get_link(&self)->String{
         let resp = resp_body(send_request(Method::GET, &self.go_to_url, vec![], "").unwrap()).unwrap();
-        let temp_map:HashMap<&str,String> = serde_json::from_str(&resp).unwrap();
-        let a = temp_map.get("value").unwrap();
-        (*a).clone()
+        parse_value(&resp).replace("\"","")
     }
     pub fn close_browser(&mut self){
         send_request(Method::DELETE, &self.session_url, vec![], "").unwrap();
         self.session_url = String::from("");
     }
-    pub fn get_timeouts(&self)->String{
-        resp_body(send_request(Method::GET, &self.timeouts_url, vec![], "").unwrap()).unwrap()
+    pub fn get_timeouts(&self)->Timeouts{
+        let resp = send_and_read_body(Method::GET, &self.timeouts_url, vec![], "");
+        serde_json::from_str(&parse_value(&resp)).unwrap()
     }
     pub fn set_timeouts(&self, timeouts: &Timeouts)->Result<(),&str>{
         let timeouts_json = serde_json::to_string(timeouts).unwrap();
@@ -135,23 +134,19 @@ impl Browser{
     }
     pub fn get_title(&self)->String{
         let json = resp_body(send_request(Method::GET, &self.title_url, vec![], "").unwrap()).unwrap();
-        let val:HashMap<&str,String> = serde_json::from_str(&json).unwrap();
-        let title = val.get("value").unwrap(); 
-        (*title).clone()
+        parse_value(&json).replace("\"","")
     }
     pub fn get_window_handle(&self)->String{
         let resp = send_and_read_body(Method::GET, &self.window_url, vec![], "");
-        let map:HashMap<&str,&str> = serde_json::from_str(&resp).unwrap();
-        (map.get("value").unwrap()).to_string().clone()
+        parse_value(&resp).replace("\"","")
+        /*let map:HashMap<&str,&str> = serde_json::from_str(&resp).unwrap();
+        (map.get("value").unwrap()).to_string().clone()*/
     }
     pub fn get_window_handles(&self)->Vec<String>{
-       let mut result:Vec<String>=vec![];
        let resp = send_and_read_body(Method::GET, &self.window_handles_url, vec![], "");
-       let map:HashMap<&str,Vec<String>> = serde_json::from_str(&resp).unwrap();
-       for i in map.get(&"value").unwrap(){
-        result.push(i.to_owned());
-       }
-       result
+       let resp = parse_value(&resp);
+       let res:Vec<String> = serde_json::from_str(&resp).unwrap();
+       res
     }
     pub fn switch_to_window(&self, window_id: String)->Result<(),String>{
         let body = format!(r#"{{"handle":"{}"}}"#,window_id);
@@ -166,21 +161,17 @@ impl Browser{
             NewWindowType::Window=>r#"{"type":"window"}"#,
         };
         let resp=send_and_read_body(Method::POST, &self.window_new_url, self.cont_length_header(&body), &body);
-        println!("{}",resp);
-        let map: HashMap<&str,HashMap<&str,String>> = serde_json::from_str(&resp).unwrap();
-        let val = map.get(&"value").unwrap();
-        let handle = (*val).get("handle").unwrap().clone();
-        let wtype = (*val).get("type").unwrap().clone();
+        let resp = parse_value(&resp);
+        let map: HashMap<&str,String> = serde_json::from_str(&resp).unwrap();
+        let handle = map.get("handle").unwrap().clone();
+        let wtype = map.get("type").unwrap().clone();
         (handle,wtype)
     }
     pub fn close_window(&self)->Vec<String>{
-       let mut result:Vec<String>=vec![];
        let resp = send_and_read_body(Method::DELETE, &self.window_url, vec![], "");
-       let map:HashMap<&str,Vec<String>> = serde_json::from_str(&resp).unwrap();
-       for i in map.get(&"value").unwrap(){
-        result.push(i.to_owned());
-       }
-       result        
+       let resp = parse_value(&resp);
+       let res:Vec<String> = serde_json::from_str(&resp).unwrap();
+       res        
     }
     pub fn switch_to_frame_by_id(&self, id: u64)->Result<(),String>{
         let body = format!(r#"{{"id":{}}}"#,id);
@@ -210,9 +201,9 @@ impl Browser{
     pub fn find_element(&self,loc_strategy:LocStrategy)->Element{
         let body = self.body_for_find_element(loc_strategy);
         let resp=send_and_read_body(Method::POST, &self.element_url, self.cont_length_header(&body), &body);
-        let map: HashMap<&str,HashMap<String,String>> = serde_json::from_str(&resp).unwrap();
-        let val = map.get(&"value").unwrap();
-        let res = val.iter().next().unwrap();
+        let resp = parse_value(&resp);
+        let map: HashMap<String,String> = serde_json::from_str(&resp).unwrap();
+        let res = map.iter().next().unwrap();
         Element{
             element_id:res.0.clone(),
             element_hash:res.1.clone(),
@@ -223,10 +214,10 @@ impl Browser{
         let mut result = vec![];
         let body = self.body_for_find_element(loc_strategy);
         let resp=send_and_read_body(Method::POST, &self.elements_url, self.cont_length_header(&body), &body);
-        let map: HashMap<&str,Vec<HashMap<String,String>>> = serde_json::from_str(&resp).unwrap();
-        let val = map.get(&"value").unwrap();
+        let resp = parse_value(&resp);
+        let map: Vec<HashMap<String,String>> = serde_json::from_str(&resp).unwrap();
         let element_url = format!("{}/element",self.session_url);
-        for i in val{
+        for i in map{
             let element_url = element_url.clone();
             let res = i.iter().next().unwrap();
             result.push(Element{
@@ -245,10 +236,11 @@ impl Browser{
     pub fn set_sindow_rect(&self, window_rect:&WindowRect)->Result<WindowRect,String>{
         let body = serde_json::to_string(window_rect).unwrap();
         let resp = send_and_read_body(Method::POST, &self.window_rect_url, self.cont_length_header(&body), &body);
-        let map:Result<HashMap<&str,WindowRect>,serde_json::Error> = serde_json::from_str(&resp);
+        let resp = parse_value(&resp);
+        let map:Result<WindowRect,serde_json::Error> = serde_json::from_str(&resp);
         match map{
             Ok(cont)=>{
-                Ok(cont.get("value").unwrap().clone())
+                Ok(cont)
             },
             Err(message)=>Err(message.to_string()),
         }
@@ -257,22 +249,22 @@ impl Browser{
     pub fn maximize_window(&self)->Result<WindowRect,String>{
         let body = r#"{}"#;
         let resp = send_and_read_body(Method::POST, &self.window_maximize_url, self.cont_length_header(&body), &body);
+        let resp = parse_value(&resp);
         if resp.contains("height")&&resp.contains("width"){
-            let map:HashMap<&str,WindowRect> = serde_json::from_str(&resp).unwrap();
-            Ok(map.get("value").unwrap().clone())
+            let res: WindowRect = serde_json::from_str(&resp).unwrap();
+            Ok(res)
         }else{Err(resp)}
 
     }
     pub fn minimize_window(&self)->Result<WindowRect,String>{
         let body = r#"{}"#;
         let resp = send_and_read_body(Method::POST, &self.window_minimize_url, self.cont_length_header(&body), &body);
+        let resp = parse_value(&resp);
         if resp.contains("height")&&resp.contains("width"){
-            let map:HashMap<&str,WindowRect> = serde_json::from_str(&resp).unwrap();
-            Ok(map.get("value").unwrap().clone())
+            let res: WindowRect = serde_json::from_str(&resp).unwrap();
+            Ok(res)
         }else{Err(resp)}
     } 
-
-
 
     fn cont_length_header(&self,content:&str)->Vec<String>{
         vec![format!("Content-Length:{}",content.len()+2)]
@@ -287,8 +279,14 @@ impl Browser{
         }
     }
 
-    
 }
+    fn parse_value(body: &str)->String{
+        let resp = body.replace("\n","").replace(" ","").replace(r#"{"value":"#,"");
+        let mut resp_vec: Vec<char> = resp.chars().collect();
+        resp_vec.pop();
+        let result: String = resp_vec.iter().collect();
+        result
+    }
     fn send_and_read_body(method: Method, path: &str, headers: Vec<String>, body: &str)->String{
         resp_body(send_request(method, path, headers, body).unwrap()).unwrap()
     }
@@ -422,7 +420,7 @@ pub mod tests{
         browser.open("https://vk.com");
         let link= browser.get_link();
         browser.close_browser();
-        assert_eq!(link.as_str(),"https://vk.com/");
+        assert_eq!(link,"https://vk.com/".to_string());
     }
     #[test]
     #[should_panic]
@@ -430,7 +428,8 @@ pub mod tests{
         let mut browser = Browser::start_session("chrome", consts::OS,vec!["--headless"]);
         browser.open("http://localhost:4444/wd/hub/status");
         browser.close_browser();
-        browser.get_link();
+        let a = browser.get_link();
+        if a.contains("invalid"){panic!("Invalid session id");}
     }
     #[test]
     fn args() {
@@ -439,15 +438,14 @@ pub mod tests{
     }
     #[test]
     fn get_timeouts() {
-        let timeouts:String;
+        let timeouts:Timeouts;
         {
             let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless"]);
             timeouts= br.get_timeouts();
             br.close_browser();
         }
-        assert!(timeouts.contains("value")&&timeouts.contains("implicit")&&timeouts.contains("pageLoad"));
+        assert!(timeouts.implicit==0&&timeouts.script==30000);
     }
-
     #[test]
     fn set_timeouts() {
         let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless"]);
@@ -582,6 +580,7 @@ pub mod tests{
         el = br.find_element(LocStrategy::CSS("#criteo-syncframe"));
         br.close_browser();
         }
+        dbg!(&el);
         assert!(el.element_id.contains("element"))
     }
     #[test]
@@ -628,5 +627,17 @@ pub mod tests{
         let wr = WindowRect{height:200, width:400,x:0,y:0};
         assert_eq!(a,wr);
     }
-
+    #[test]
+    fn parse_val_test() {
+        let resp = r#"{
+       "value": {
+       "dftg43rert34tert-34trte-243f-4":
+       {
+        "id": 333
+        }
+      }
+     }"#;
+       let res = parse_value(resp);
+       assert_eq!(res,"{\"dftg43rert34tert-34trte-243f-4\":{\"id\":333}}");
+    }
 }
