@@ -2,7 +2,7 @@ use std::io::{Read, Write};
 use std::net::TcpStream;
 use std::error::Error;
 
-pub enum Method {
+pub (crate) enum Method {
     GET,
     POST,
     DELETE,
@@ -16,7 +16,7 @@ pub(crate) fn send_request(method: Method, path: &str, headers: Vec<String>, bod
     
 }
 
-pub fn resp_body(response: String)->Result<String,&'static str>{
+pub(crate) fn resp_body(response: String)->Result<String,&'static str>{
     let mut a = response.split("\r\n\r\n");
     a.next();
     if let Some(result) = a.next(){

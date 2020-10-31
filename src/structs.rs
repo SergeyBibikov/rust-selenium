@@ -182,9 +182,55 @@ impl Browser{
        }
        result        
     }
+    pub fn switch_to_frame_by_id(&self, id: u64)->Result<(),String>{
+        let body = format!(r#"{{"id":{}}}"#,id);
+        let resp = send_and_read_body(Method::POST, &self.frame_url, self.cont_length_header(&body), &body);
+        if resp.as_str()!=r#"{"value":null}"#{
+            return Err(resp);
+        }
+        Ok(())
+    }
+    pub fn find_element(&self,loc_strategy:LocStrategy)->Element{
+        let body = self.body_for_find_element(loc_strategy);
+        let resp=send_and_read_body(Method::POST, &self.element_url, self.cont_length_header(&body), &body);
+        let map: HashMap<&str,HashMap<String,String>> = serde_json::from_str(&resp).unwrap();
+        let val = map.get(&"value").unwrap();
+        let res = val.iter().next().unwrap();
+        Element{
+            element_id:res.0.clone(),
+            element_hash:res.1.clone(),
+        }
+    }
+    pub fn find_elements(&self,loc_strategy:LocStrategy)->Vec<Element>{
+        let mut result = vec![];
+        let body = self.body_for_find_element(loc_strategy);
+        let resp=send_and_read_body(Method::POST, &self.elements_url, self.cont_length_header(&body), &body);
+        let map: HashMap<&str,Vec<HashMap<String,String>>> = serde_json::from_str(&resp).unwrap();
+        let val = map.get(&"value").unwrap();
+        for i in val{
+            let res = i.iter().next().unwrap();
+            result.push(Element{
+            element_id:res.0.clone(),
+            element_hash:res.1.clone(),
+            });
+        }
+        result
+    }
+
+    //pub fn switch_to_frame_by_element(&self, element:Element){}
     fn cont_length_header(&self,content:&str)->Vec<String>{
         vec![format!("Content-Length:{}",content.len()+2)]
     }
+    fn body_for_find_element(&self,loc_strategy:LocStrategy)->String{
+        match loc_strategy{
+            LocStrategy::CSS(selector)=>format!(r#"{{"using":"css selector","value":"{}"}}"#,selector),
+            LocStrategy::LINKTEXT(selector)=>format!(r#"{{"using":"link text","value":"{}"}}"#,selector),
+            LocStrategy::PARTLINKTEXT(selector)=>format!(r#"{{"using":"partial link text","value":"{}"}}"#,selector),
+            LocStrategy::TAGNAME(selector)=>format!(r#"{{"using":"tag name","value":"{}"}}"#,selector),
+            LocStrategy::XPATH(selector)=>format!(r#"{{"using":"xpath","value":"{}"}}"#,selector)
+        }
+    }
+
     
 }
     fn send_and_read_body(method: Method, path: &str, headers: Vec<String>, body: &str)->String{
@@ -226,10 +272,20 @@ pub enum NewWindowType{
     Tab,
     Window
 }
-
-pub struct Element{
-    element_id: String,
+pub enum LocStrategy{
+    CSS(&'static str),
+    LINKTEXT(&'static str),
+    PARTLINKTEXT(&'static str),
+    TAGNAME(&'static str),
+    XPATH(&'static str)
 }
+
+#[derive(Debug)]
+pub struct Element{
+    pub(self)element_id: String,
+    pub(self)element_hash: String,
+}
+
 
 pub struct Cookie{
     cookie_name:String,
@@ -425,7 +481,41 @@ pub mod tests{
     fn new_window(){
         let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless"]);
         let wind = br.new_window(NewWindowType::Tab);
+        dbg!(&wind);
         assert!(wind.1=="tab"&&br.get_window_handles().len()==2);
         br.close_browser();
     }
+    #[test]
+    fn sw_to_frame_by_id() {
+        let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless"]);
+        br.open("https://bash.im");
+        let res = br.switch_to_frame_by_id(0);
+        br.close_browser();
+        assert_eq!(res,Ok(()));
+
+    }
+    #[test]
+    fn find_el() {
+        let el;
+        {
+        let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless"]);
+        br.open("https://bash.im");
+        el = br.find_element(LocStrategy::CSS("#criteo-syncframe"));
+        br.close_browser();
+        }
+        assert!(el.element_id.contains("element"))
+    }
+    #[test]
+    fn find_els() {
+        let el;
+        {
+        let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless"]);
+        br.open("https://bash.im");
+        el = br.find_elements(LocStrategy::CSS("article"));
+        br.close_browser();
+        }
+        dbg!(el);
+        //assert!(el.element_id.contains("element"))
+    }
+
 }
