@@ -308,6 +308,21 @@ impl Browser{
         }
         Err(resp)
     }
+    pub fn delete_cookie(&self,cookie_name:&str)->Result<(),String>{
+        let uri = format!("{}/{}",self.cookie_url,cookie_name);
+        let resp = send_and_read_body(Method::DELETE, &uri, vec![], "");
+        if resp==r#"{"value":null}"#{
+            return Ok(());
+        }
+        Err(resp)
+    }
+    pub fn delete_all_cookies(&self)->Result<(),String>{
+        let resp = send_and_read_body(Method::DELETE, &self.cookie_url, vec![], "");
+        if resp==r#"{"value":null}"#{
+            return Ok(());
+        }
+        Err(resp)
+    }
     /// Executes the sync fun in the browser. In case the argument is a string, it should be a raw string or should incluse escapes with d. quotes
     /// For example, if the args list you want to pass is [5,"Jack", 15], the vector should be ["5",r#"Jack"#,"15"]
     pub fn execute_sync(&self, script: &str, args: &Vec<&str>)->Result<String,String>{
@@ -854,6 +869,24 @@ pub mod tests{
         let cook = Cookie::new_all(String::from(""), 1000, String::from("Lax"), false, String::from("tmr_detect"), String::from(""), false, String::from("0%7C1604223632022"));
         assert_eq!(br.add_cookie(cook),Ok(()));
         br.close_browser();
+    }
+
+    #[test]
+    fn del_all_cook() {
+        let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless"]);
+        br.open("https://vk.com");
+        br.delete_all_cookies().unwrap();
+        let cook = br.get_all_cookies();
+        br.close_browser();
+        assert!(cook.len()==0);
+    }
+    #[test]
+    fn del_cookie() {
+        let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless"]);
+        br.open("https://vk.com");
+        let r = br.delete_cookie("remixjsp");
+        br.close_browser();
+        assert!(r==Ok(()));
     }
 
 }
