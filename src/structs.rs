@@ -282,17 +282,22 @@ impl Browser{
     }
 
     pub fn get_all_cookies(&self)->Vec<Cookie>{
+        let mut result: Vec<Cookie> = vec![];
         let resp = send_and_read_body(Method::GET, &self.cookie_url, vec![], "");
-        let map:HashMap<&str,Vec<Cookie>> = serde_json::from_str(&resp).unwrap();
-        (*map.get("value").unwrap()).clone()      
+        let map:HashMap<&str,Vec<serde_json::Value>> = serde_json::from_str(&resp).unwrap();
+        for v in map.get("value").unwrap(){
+            result.push(from_value_to_cookie(v));
+        }  
+        result   
     }
 
     pub fn get_cookie(&self,cookie_name:&str)->Result<Cookie,String>{
         let url = format!("{}/{}",self.cookie_url,cookie_name);
         let resp = send_and_read_body(Method::GET, &url, vec![], "");
         if resp.contains("domain")&&resp.contains("expiry")&&resp.contains("name"){
-            let map:HashMap<&str,Cookie> = serde_json::from_str(&resp).unwrap();
-            return Ok((*map.get(&"value").unwrap()).clone());
+            let map:HashMap<&str,serde_json::Value> = serde_json::from_str(&resp).unwrap();
+            let v = map.get(&"value").unwrap();
+            return Ok(from_value_to_cookie(v));
         }
         Err(resp)
     }
@@ -429,15 +434,69 @@ pub struct Cookie{
     pub(self)path:String,
     pub(self)secure:bool,
     pub(self)value:String,
+    pub(self)sameSite:String,
 }
-/*impl Cookie{
-    pub fn new_all()->Self{
-
+impl Cookie{
+    pub fn new_all(domain:String, expiry:u64,same_site:String, http_only:bool,name:String,path:String,secure:bool,value:String)->Self{
+        Cookie{
+            domain,
+            expiry,
+            httpOnly: http_only,
+            name,
+            path,
+            sameSite:same_site,
+            secure,
+            value
+        }
     }
-    pub fn new()->Self{
-
+    pub fn new(name:String,value:String)->Self{
+        Cookie{name,value,..Default::default()}
     }
-}*/
+}
+impl Default for Cookie{
+    fn default()->Self{
+        Cookie{
+            domain:"".to_string(),
+            expiry: 0,
+            httpOnly: false,
+            name:"".to_string(),
+            path:"".to_string(),
+            secure:false,
+            value:"".to_string(),
+            sameSite:"None".to_string(),
+        }
+    }
+}
+
+fn from_value_to_cookie(val: &serde_json::Value)->Cookie{
+        let name = String::from(val["name"].as_str().unwrap());
+        let value = String::from(val["value"].as_str().unwrap());
+        let mut domain = String::from("");
+        let mut expiry = 0;
+        let mut http_only = false;
+        let mut path = String::from("");
+        let mut secure = false;
+        let mut same_site = String::from("");
+        if let Some(dom) = val["domain"].as_str(){
+            domain=String::from(dom);
+        }
+        if let Some(exp) = val["expiry"].as_u64(){
+            expiry=exp;
+        }
+        if let Some(http) = val["httpOnly"].as_bool(){
+            http_only=http;
+        }
+        if let Some(pat) = val["path"].as_str(){
+            path=String::from(pat);
+        }
+        if let Some(sec) = val["secure"].as_bool(){
+            secure = sec;
+        }
+        if let Some(same) = val["sameSite"].as_str(){
+            same_site=String::from(same);
+        }
+        Cookie{name,value,path,expiry,secure,domain,httpOnly: http_only,sameSite:same_site}
+}
 
 
 #[allow(non_snake_case)]
