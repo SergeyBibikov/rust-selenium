@@ -323,6 +323,16 @@ impl Browser{
         }
         Err(resp)
     }
+    pub fn take_screenshot(&self,path:&str){
+        let resp = send_request_screensh(Method::GET, &self.screenshot_url, vec![], "");
+        let s = resp.unwrap();
+        //let resp = send_and_read_body(Method::GET, &self.screenshot_url, vec![], "");
+        println!("RespLen = {}",s.len());
+        //println!("{}", std::str::from_utf8(&s).unwrap());
+        // let map:HashMap<&str,String> = serde_json::from_str(&resp).unwrap();
+        // std::fs::write(path,map.get("value").unwrap().as_bytes()).unwrap();
+        std::fs::write(path,s).unwrap();
+    }
     /// Executes the sync fun in the browser. In case the argument is a string, it should be a raw string or should incluse escapes with d. quotes
     /// For example, if the args list you want to pass is [5,"Jack", 15], the vector should be ["5",r#"Jack"#,"15"]
     pub fn execute_sync(&self, script: &str, args: &Vec<&str>)->Result<String,String>{
@@ -577,6 +587,7 @@ impl Timeouts{
 //TESTS
 
 pub mod tests{
+
     use super::*;
     use std::env::*;
     #[test]
@@ -887,6 +898,13 @@ pub mod tests{
         let r = br.delete_cookie("remixjsp");
         br.close_browser();
         assert!(r==Ok(()));
+    }
+    #[test]
+    fn screensh() {
+        let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless"]);
+        br.open("https://vk.com");
+        br.take_screenshot("screen.png");
+        br.close_browser();
     }
 
 }
