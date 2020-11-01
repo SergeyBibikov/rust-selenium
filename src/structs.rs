@@ -1,6 +1,9 @@
+extern crate base64;
+
 use serde::{Serialize,Deserialize};
 use super::reqs::*;
 use std::collections::HashMap;
+use base64::decode;
 
 #[derive(Serialize,Deserialize)]
 struct Value{
@@ -324,14 +327,10 @@ impl Browser{
         Err(resp)
     }
     pub fn take_screenshot(&self,path:&str){
-        let resp = send_request_screensh(Method::GET, &self.screenshot_url, vec![], "");
-        let s = resp.unwrap();
-        //let resp = send_and_read_body(Method::GET, &self.screenshot_url, vec![], "");
-        println!("RespLen = {}",s.len());
-        //println!("{}", std::str::from_utf8(&s).unwrap());
-        // let map:HashMap<&str,String> = serde_json::from_str(&resp).unwrap();
-        // std::fs::write(path,map.get("value").unwrap().as_bytes()).unwrap();
-        std::fs::write(path,s).unwrap();
+        let resp = send_request_screensh(Method::GET, &self.screenshot_url, vec![], "").unwrap();
+        //let st = String::from_utf8(resp).unwrap();
+        let new = base64::decode(resp).unwrap();
+        std::fs::write(path,new).unwrap();
     }
     /// Executes the sync fun in the browser. In case the argument is a string, it should be a raw string or should incluse escapes with d. quotes
     /// For example, if the args list you want to pass is [5,"Jack", 15], the vector should be ["5",r#"Jack"#,"15"]
@@ -609,7 +608,7 @@ pub mod tests{
         browser.open("https://vk.com");
         let link= browser.get_link();
         browser.close_browser();
-        assert_eq!(link,"https://vk.com/".to_string());
+        assert_eq!(&link,"https://vk.com/");
     }
     #[test]
     #[should_panic]
@@ -674,7 +673,7 @@ pub mod tests{
         br.forward();
         link = br.get_link();        
         br.close_browser();}
-        assert_eq!(link.as_str(),"https://m.facebook.com/");
+        assert_eq!(&link,"https://m.facebook.com/");
     }
     #[test]
     fn refresh_test() {
@@ -755,7 +754,6 @@ pub mod tests{
         let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless"]);
         br.open("https://vk.com");
         let el = br.find_element(LocStrategy::CSS("#quick_login_frame"));
-        dbg!(&el);
         let res = br.switch_to_frame_by_element(el);
         br.close_browser();
         assert_eq!(res,Ok(()));
@@ -765,11 +763,12 @@ pub mod tests{
         let el;
         {
         let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless"]);
-        br.open("https://bash.im");
-        el = br.find_element(LocStrategy::CSS("#criteo-syncframe"));
+        br.open("https://vk.com");
+        el = br.find_element(LocStrategy::CSS("#ts_input"));
         br.close_browser();
         }
-        assert!(el.element_id.contains("element"));
+        let tr =el.element_id.contains("element"); 
+        assert!(tr);
     }
     #[test]
     fn find_els() {
@@ -780,7 +779,8 @@ pub mod tests{
         el = br.find_elements(LocStrategy::CSS("article"));
         br.close_browser();
         }
-        assert!(el.len()>2);
+        let len = el.len();
+        assert!(len>2);
     }
     #[test]
     fn sw_to_par_fr() {
@@ -883,13 +883,15 @@ pub mod tests{
     }
 
     #[test]
-    fn del_all_cook() {
+    fn a_del_all_cook() {
         let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless"]);
         br.open("https://vk.com");
+        //std::thread::sleep_ms(200);
         br.delete_all_cookies().unwrap();
         let cook = br.get_all_cookies();
+        //dbg!(&cook);
         br.close_browser();
-        assert!(cook.len()==0);
+        assert_eq!(cook.len(),0);
     }
     #[test]
     fn del_cookie() {

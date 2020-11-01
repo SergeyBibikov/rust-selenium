@@ -57,8 +57,7 @@ fn create_req(method: Method, path: &str, headers: Vec<String>, body: &str) -> S
 }
 
 fn read_response(mut stream: &TcpStream) -> Result<String,Box<dyn Error>> {
-    //let bytes_num = stream.peek(&mut vec![0;32768]).unwrap();
-    let bytes_num = stream.peek(&mut vec![0;2097152]).unwrap();
+    let bytes_num = stream.peek(&mut vec![0;32768]).unwrap();
     let mut buff = vec![0;bytes_num];
     stream.read(&mut buff)?;
     let response = String::from_utf8(buff)?;
@@ -79,26 +78,36 @@ fn read_response_screensh(mut stream: TcpStream) -> Result<Vec<u8>,Box<dyn Error
             sender.send(buff);
         }
     });
-    thread::sleep(std::time::Duration::from_millis(100));
+    thread::sleep(std::time::Duration::from_millis(250));
     let mut it = receiver.try_iter();
     while let Some(n) = it.next(){
         temp_buf.push(n);
     }
-    /*for a in receiver.try_recv(){
-        temp_buf.push(a);
-    }*/
+    
     for v in temp_buf{
         for b in v{
             result_buf.push(b);
         }
     }
-    //let response = String::from_utf8(buff)?;
-    for i in 0..result_buf.len(){
-        if result_buf[i]==b"\r"[0]&&result_buf[i+1]==b"\n"[0]&&result_buf[i+2]==b"\r"[0]&&result_buf[i+3]==b"\n"[0]{
-            println!("The position is - {}",i);
+    let len = result_buf.len();
+    let mut index = 0;
+    for i in 0..len{
+        if result_buf[i]==b"{"[0]&&
+            result_buf[i+1]==b"\""[0]&&
+            result_buf[i+2]==b"v"[0]&&
+            result_buf[i+3]==b"a"[0]&&
+            result_buf[i+4]==b"l"[0]&&
+            result_buf[i+5]==b"u"[0]&&
+            result_buf[i+6]==b"e"[0]&&
+            result_buf[i+7]==b"\""[0]&&
+            result_buf[i+8]==b":"[0]{
+            index = i+9; 
+            break;
         }
-    };
-    Ok(result_buf)
+    }
+    let mut res = vec![];
+    res.extend_from_slice(&result_buf[index+1..len-2]);
+    Ok(res)
 }
 
 //TESTS FOR PRIVATE FUNCTIONS
