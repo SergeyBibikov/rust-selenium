@@ -328,7 +328,6 @@ impl Browser{
     }
     pub fn take_screenshot(&self,path:&str){
         let resp = send_request_screensh(Method::GET, &self.screenshot_url, vec![], "").unwrap();
-        //let st = String::from_utf8(resp).unwrap();
         let new = base64::decode(resp).unwrap();
         std::fs::write(path,new).unwrap();
     }
