@@ -12,6 +12,7 @@ struct Value{
 struct Session{
     sessionId: String,
 }
+
 #[derive(Debug)]
 pub struct Browser{
     session_url: String, //The session/ url for constructing other urls
@@ -44,7 +45,7 @@ pub struct Browser{
     screenshot_url:String,
     print_page_url:String,
 }
-
+#[allow(dead_code)]
 impl Browser{
     pub fn start_session(browser: &str, os:&str,args:Vec<&str>)->Browser{
         let req_body = create_session_body_json(browser,os,args);
@@ -279,6 +280,22 @@ impl Browser{
         let map:HashMap<&str,String> = serde_json::from_str(&resp).unwrap();
         map.get("value").unwrap().clone()
     }
+
+    pub fn get_all_cookies(&self)->Vec<Cookie>{
+        let resp = send_and_read_body(Method::GET, &self.cookie_url, vec![], "");
+        let map:HashMap<&str,Vec<Cookie>> = serde_json::from_str(&resp).unwrap();
+        (*map.get("value").unwrap()).clone()      
+    }
+
+    pub fn get_cookie(&self,cookie_name:&str)->Result<Cookie,String>{
+        let url = format!("{}/{}",self.cookie_url,cookie_name);
+        let resp = send_and_read_body(Method::GET, &url, vec![], "");
+        if resp.contains("domain")&&resp.contains("expiry")&&resp.contains("name"){
+            let map:HashMap<&str,Cookie> = serde_json::from_str(&resp).unwrap();
+            return Ok((*map.get(&"value").unwrap()).clone());
+        }
+        Err(resp)
+    }
     
     /// Executes the sync fun in the browser. In case the argument is a string, it should be a raw string or should incluse escapes with d. quotes
     /// For example, if the args list you want to pass is [5,"Jack", 15], the vector should be ["5",r#"Jack"#,"15"]
@@ -402,9 +419,25 @@ impl WindowRect{
     }
 }
 
+#[allow(non_snake_case)]
+#[derive(Serialize,Deserialize,Debug,Clone)]
 pub struct Cookie{
-    cookie_name:String,
+    pub(self)domain:String,
+    pub(self)expiry: u64,
+    pub(self)httpOnly:bool,
+    pub(self)name:String,
+    pub(self)path:String,
+    pub(self)secure:bool,
+    pub(self)value:String,
 }
+/*impl Cookie{
+    pub fn new_all()->Self{
+
+    }
+    pub fn new()->Self{
+
+    }
+}*/
 
 
 #[allow(non_snake_case)]
@@ -714,5 +747,22 @@ pub mod tests{
         assert!(res.contains("5"));
     }
     
+    #[test]
+    fn cookies() {
+        let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless"]);
+        br.open("https://vk.com");
+        let cook = br.get_all_cookies();
+        br.close_browser();
+        assert!(cook.len()>1);
+    }
+
+    #[test]
+    fn get_cookie() {
+        let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless"]);
+        br.open("https://vk.com");
+        let c = br.get_cookie("tmr_lvidTS").unwrap();
+        br.close_browser();
+        assert_eq!(c.httpOnly,false);
+    }
 
 }
