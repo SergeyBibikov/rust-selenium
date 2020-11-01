@@ -280,7 +280,6 @@ impl Browser{
         let map:HashMap<&str,String> = serde_json::from_str(&resp).unwrap();
         map.get("value").unwrap().clone()
     }
-
     pub fn get_all_cookies(&self)->Vec<Cookie>{
         let mut result: Vec<Cookie> = vec![];
         let resp = send_and_read_body(Method::GET, &self.cookie_url, vec![], "");
@@ -290,7 +289,6 @@ impl Browser{
         }  
         result   
     }
-
     pub fn get_cookie(&self,cookie_name:&str)->Result<Cookie,String>{
         let url = format!("{}/{}",self.cookie_url,cookie_name);
         let resp = send_and_read_body(Method::GET, &url, vec![], "");
@@ -301,7 +299,15 @@ impl Browser{
         }
         Err(resp)
     }
-    
+    pub fn add_cookie(&self,cookie:Cookie)->Result<(),String>{
+        let cook = serde_json::to_string(&cookie).unwrap();
+        let body =format!(r#"{{"cookie": {} }}"#,cook);
+        let resp = send_and_read_body(Method::POST, &self.cookie_url, self.cont_length_header(&body), &body);
+        if resp==r#"{"value":null}"#{
+            return Ok(());
+        }
+        Err(resp)
+    }
     /// Executes the sync fun in the browser. In case the argument is a string, it should be a raw string or should incluse escapes with d. quotes
     /// For example, if the args list you want to pass is [5,"Jack", 15], the vector should be ["5",r#"Jack"#,"15"]
     pub fn execute_sync(&self, script: &str, args: &Vec<&str>)->Result<String,String>{
@@ -452,6 +458,23 @@ impl Cookie{
     pub fn new(name:String,value:String)->Self{
         Cookie{name,value,..Default::default()}
     }
+
+    pub fn get_domain(&self)->String{self.domain.clone()}
+    pub fn get_expiry(&self)->u64{self.expiry}
+    pub fn get_http_only(&self)->bool{self.httpOnly}
+    pub fn get_name(&self)->String{self.name.clone()}
+    pub fn get_path(&self)->String{self.path.clone()}
+    pub fn get_secure(&self)->bool{self.secure}
+    pub fn get_value(&self)->String{self.value.clone()}
+    pub fn get_same_site(&self)->String{self.sameSite.clone()}
+
+
+    pub fn set_domain(&mut self, domain:String){self.domain=domain;}
+    pub fn set_expiry(&mut self, expiry: u64){self.expiry=expiry;}
+    pub fn set_http_only(&mut self, http_only:bool){self.httpOnly=http_only;}
+    pub fn set_path(&mut self, path: String){self.path=path;}
+    pub fn set_secure(&mut self, secure: bool){self.secure=secure;}
+    pub fn set_same_site(&mut self, same_site:String){self.sameSite=same_site;}
 }
 impl Default for Cookie{
     fn default()->Self{
@@ -822,6 +845,15 @@ pub mod tests{
         let c = br.get_cookie("tmr_lvidTS").unwrap();
         br.close_browser();
         assert_eq!(c.httpOnly,false);
+    }
+
+    #[test]
+    fn add_cookie() {
+        let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless"]);
+        br.open("https://vk.com");
+        let cook = Cookie::new_all(String::from(""), 1000, String::from("Lax"), false, String::from("tmr_detect"), String::from(""), false, String::from("0%7C1604223632022"));
+        assert_eq!(br.add_cookie(cook),Ok(()));
+        br.close_browser();
     }
 
 }
