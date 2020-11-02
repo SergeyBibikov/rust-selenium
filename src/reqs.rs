@@ -76,7 +76,7 @@ fn read_response_screensh(mut stream: TcpStream) -> Result<Vec<u8>,Box<dyn Error
             let bytes_num = stream.peek(&mut b).unwrap();
             let mut buff = vec![0;bytes_num];
             stream.read(&mut buff).unwrap();
-            sender.send(buff);
+            sender.send(buff).unwrap();
         }
     });    
     

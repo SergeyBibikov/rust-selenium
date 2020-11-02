@@ -3,7 +3,6 @@ extern crate base64;
 use serde::{Serialize,Deserialize};
 use super::reqs::*;
 use std::collections::HashMap;
-use base64::decode;
 
 #[derive(Serialize,Deserialize)]
 struct Value{
@@ -48,7 +47,7 @@ pub struct Browser{
     screenshot_url:String,
     print_page_url:String,
 }
-#[allow(dead_code)]
+
 impl Browser{
     pub fn start_session(browser: &str, os:&str,args:Vec<&str>)->Browser{
         let req_body = create_session_body_json(browser,os,args);
@@ -433,15 +432,46 @@ impl Browser{
         result.push_str("]");
         result
     }
+    fn from_value_to_cookie(val: &serde_json::Value)->Cookie{
+        let name = String::from(val["name"].as_str().unwrap());
+        let value = String::from(val["value"].as_str().unwrap());
+        let mut domain = String::from("");
+        let mut expiry = 0;
+        let mut http_only = false;
+        let mut path = String::from("");
+        let mut secure = false;
+        let mut same_site = String::from("");
+        if let Some(dom) = val["domain"].as_str(){
+            domain=String::from(dom);
+        }
+        if let Some(exp) = val["expiry"].as_u64(){
+            expiry=exp;
+        }
+        if let Some(http) = val["httpOnly"].as_bool(){
+            http_only=http;
+        }
+        if let Some(pat) = val["path"].as_str(){
+            path=String::from(pat);
+        }
+        if let Some(sec) = val["secure"].as_bool(){
+            secure = sec;
+        }
+        if let Some(same) = val["sameSite"].as_str(){
+            same_site=String::from(same);
+        }
+        Cookie{name,value,path,expiry,secure,domain,httpOnly: http_only,sameSite:same_site}
+    }
     
 /*
 TODO
 pub struct ChromeOptions{}
 */
+
 pub enum NewWindowType{
     Tab,
     Window
 }
+
 pub enum LocStrategy{
     CSS(&'static str),
     LINKTEXT(&'static str),
@@ -483,6 +513,7 @@ pub struct Cookie{
     pub(self)value:String,
     pub(self)sameSite:String,
 }
+
 impl Cookie{
     pub fn new_all(domain:String, expiry:u64,same_site:String, http_only:bool,name:String,path:String,secure:bool,value:String)->Self{
         Cookie{
@@ -532,37 +563,6 @@ impl Default for Cookie{
     }
 }
 
-fn from_value_to_cookie(val: &serde_json::Value)->Cookie{
-        let name = String::from(val["name"].as_str().unwrap());
-        let value = String::from(val["value"].as_str().unwrap());
-        let mut domain = String::from("");
-        let mut expiry = 0;
-        let mut http_only = false;
-        let mut path = String::from("");
-        let mut secure = false;
-        let mut same_site = String::from("");
-        if let Some(dom) = val["domain"].as_str(){
-            domain=String::from(dom);
-        }
-        if let Some(exp) = val["expiry"].as_u64(){
-            expiry=exp;
-        }
-        if let Some(http) = val["httpOnly"].as_bool(){
-            http_only=http;
-        }
-        if let Some(pat) = val["path"].as_str(){
-            path=String::from(pat);
-        }
-        if let Some(sec) = val["secure"].as_bool(){
-            secure = sec;
-        }
-        if let Some(same) = val["sameSite"].as_str(){
-            same_site=String::from(same);
-        }
-        Cookie{name,value,path,expiry,secure,domain,httpOnly: http_only,sameSite:same_site}
-}
-
-
 #[allow(non_snake_case)]
 #[derive(Serialize,Deserialize,Debug,PartialEq)]
 pub struct Timeouts{
@@ -570,6 +570,7 @@ pub struct Timeouts{
     pageLoad:u32,
     script:u32,
 }
+
 impl Timeouts{
     ///Instantiates the Timeouts with all fields set
     pub fn set_all (implicit: u32, page_load: u32,script:u32)->Timeouts{
