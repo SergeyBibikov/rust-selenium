@@ -326,12 +326,29 @@ impl Browser{
         }
         Err(resp)
     }
-    pub fn take_screenshot(&self,path:&str){
-        let resp = send_request_screensh(Method::GET, &self.screenshot_url, vec![], "").unwrap();
-        let new = base64::decode(resp).unwrap();
-        std::fs::write(path,new).unwrap();
+    pub fn take_screenshot(&self,path:&str)->Result<(),String>{
+        if let Ok(resp) = send_request_screensh(Method::GET, &self.screenshot_url, vec![], ""){
+             if let Ok(new) = base64::decode(resp){
+                match std::fs::write(path,new){
+                    Ok(())=>return Ok(()),
+                    Err(message)=> return Err(message.to_string()),
+                }
+             }
+        }
+        Err(String::from("Could not take a screenshot"))     
     }
-    //pub fn take_element_screenshot(&self,elem:Element){}
+    pub fn take_element_screenshot(&self,elem:Element,path: &str)->Result<(),String>{
+        let uri = format!("{}/{}/screenshot",self.element_url,elem.element_hash);
+        if let Ok(resp) = send_request_screensh(Method::GET, &uri, vec![], ""){
+            if let Ok(new) = base64::decode(resp){
+                match std::fs::write(path,new){
+                    Ok(())=>return Ok(()),
+                    Err(message)=> return Err(message.to_string()),
+                }
+            }
+        }
+        Err(String::from("Could not take a screenshot")) 
+    }
     /// Executes the sync fun in the browser. In case the argument is a string, it should be a raw string or should incluse escapes with d. quotes
     /// For example, if the args list you want to pass is [5,"Jack", 15], the vector should be ["5",r#"Jack"#,"15"]
     pub fn execute_sync(&self, script: &str, args: &Vec<&str>)->Result<String,String>{
@@ -905,7 +922,15 @@ pub mod tests{
     fn screensh() {
         let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless","--window-size=7680,4320"]);
         br.open("https://vk.com");
-        br.take_screenshot("screen.png");
+        br.take_screenshot("screen.png").unwrap();
+        br.close_browser();
+    }
+    #[test]
+    fn el_screensh() {
+        let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless","--window-size=800,600"]);
+        br.open("https://vk.com");
+        let el = br.find_element(LocStrategy::CSS("#ts_input"));
+        br.take_element_screenshot(el,"screen.png").unwrap();
         br.close_browser();
     }
 

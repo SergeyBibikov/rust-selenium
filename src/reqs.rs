@@ -70,15 +70,15 @@ fn read_response_screensh(mut stream: TcpStream) -> Result<Vec<u8>,Box<dyn Error
     let mut result_buf = vec![];
     let mut temp_buf = vec![];
     let (sender,receiver) = mpsc::channel();
-        std::thread::spawn(move || {
-            loop{
-                let mut b = vec![0;262144];
-                let bytes_num = stream.peek(&mut b).unwrap();
-                let mut buff = vec![0;bytes_num];
-                stream.read(&mut buff).unwrap();
-                sender.send(buff);
-            }
-        });    
+    std::thread::spawn(move || {
+        loop{
+            let mut b = vec![0;262144];
+            let bytes_num = stream.peek(&mut b).unwrap();
+            let mut buff = vec![0;bytes_num];
+            stream.read(&mut buff).unwrap();
+            sender.send(buff);
+        }
+    });    
     
     let mut counter = 0;
     let mut started = false;
