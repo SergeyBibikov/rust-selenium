@@ -70,19 +70,31 @@ fn read_response_screensh(mut stream: TcpStream) -> Result<Vec<u8>,Box<dyn Error
     let mut result_buf = vec![];
     let mut temp_buf = vec![];
     let (sender,receiver) = mpsc::channel();
-    std::thread::spawn(move || {
-        loop{
-            let bytes_num = stream.peek(&mut vec![0;4096]).unwrap();
-            let mut buff = vec![0;bytes_num];
-            stream.read(&mut buff).unwrap();
-            sender.send(buff);
+        std::thread::spawn(move || {
+            loop{
+                let mut b = vec![0;262144];
+                let bytes_num = stream.peek(&mut b).unwrap();
+                let mut buff = vec![0;bytes_num];
+                stream.read(&mut buff).unwrap();
+                sender.send(buff);
+            }
+        });    
+    
+    let mut counter = 0;
+    let mut started = false;
+    loop{
+        if counter ==3 {
+            break;
         }
-    });
-    thread::sleep(std::time::Duration::from_millis(250));
-    let mut it = receiver.try_iter();
-    while let Some(n) = it.next(){
-        temp_buf.push(n);
-    }
+        if let Ok(a) = receiver.try_recv(){
+            temp_buf.push(a);
+            started = true;
+        }else if !started {
+            continue;
+        }else {
+            thread::sleep(std::time::Duration::from_millis(10));
+            counter+=1;}
+    }    
     
     for v in temp_buf{
         for b in v{
@@ -91,16 +103,12 @@ fn read_response_screensh(mut stream: TcpStream) -> Result<Vec<u8>,Box<dyn Error
     }
     let len = result_buf.len();
     let mut index = 0;
-    for i in 0..len{
+    for i in 0..400{
         if result_buf[i]==b"{"[0]&&
             result_buf[i+1]==b"\""[0]&&
             result_buf[i+2]==b"v"[0]&&
             result_buf[i+3]==b"a"[0]&&
-            result_buf[i+4]==b"l"[0]&&
-            result_buf[i+5]==b"u"[0]&&
-            result_buf[i+6]==b"e"[0]&&
-            result_buf[i+7]==b"\""[0]&&
-            result_buf[i+8]==b":"[0]{
+            result_buf[i+4]==b"l"[0]{
             index = i+9; 
             break;
         }

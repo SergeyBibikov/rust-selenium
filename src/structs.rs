@@ -331,6 +331,7 @@ impl Browser{
         let new = base64::decode(resp).unwrap();
         std::fs::write(path,new).unwrap();
     }
+    //pub fn take_element_screenshot(&self,elem:Element){}
     /// Executes the sync fun in the browser. In case the argument is a string, it should be a raw string or should incluse escapes with d. quotes
     /// For example, if the args list you want to pass is [5,"Jack", 15], the vector should be ["5",r#"Jack"#,"15"]
     pub fn execute_sync(&self, script: &str, args: &Vec<&str>)->Result<String,String>{
@@ -902,7 +903,7 @@ pub mod tests{
     }
     #[test]
     fn screensh() {
-        let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless"]);
+        let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless","--window-size=7680,4320"]);
         br.open("https://vk.com");
         br.take_screenshot("screen.png");
         br.close_browser();
