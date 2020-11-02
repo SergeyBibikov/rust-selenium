@@ -150,3 +150,8 @@ fn get_req_creation() {
         )
     );
 }
+#[test]
+fn ge_t_status(){
+    let response = send_request(Method::GET, "wd/hub/status", vec![], "").unwrap();
+    assert!(response.contains("Server is running"));
+} 
