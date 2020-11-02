@@ -348,7 +348,7 @@ impl Browser{
         }
         Err(String::from("Could not take a screenshot")) 
     }
-    /// Executes the sync fun in the browser. In case the argument is a string, it should be a raw string or should incluse escapes with d. quotes
+    /// Executes the sync fun in the browser. In case the argument is a string, it should be a raw string or should incluse escapes with double quotes
     /// For example, if the args list you want to pass is [5,"Jack", 15], the vector should be ["5",r#"Jack"#,"15"]
     pub fn execute_sync(&self, script: &str, args: &Vec<&str>)->Result<String,String>{
         let args = gen_script_args(args);
@@ -369,6 +369,14 @@ impl Browser{
         }
         Ok(resp)
     }
+    pub fn print(&self,print_settings:PrintSettings,path:&str)->Result<(),String>{
+        let pr_set_body = serde_json::to_string(&print_settings).unwrap();
+        let resp = send_request_screensh(Method::POST, &self.print_page_url, self.cont_length_header(&pr_set_body), &pr_set_body).unwrap();
+        let new = base64::decode(resp).unwrap();
+        std::fs::write(path,new).unwrap();
+        Ok(())
+    }
+
 
     fn cont_length_header(&self,content:&str)->Vec<String>{
         vec![format!("Content-Length:{}",content.len()+2)]
@@ -570,7 +578,6 @@ pub struct Timeouts{
     pageLoad:u32,
     script:u32,
 }
-
 impl Timeouts{
     ///Instantiates the Timeouts with all fields set
     pub fn set_all (implicit: u32, page_load: u32,script:u32)->Timeouts{
@@ -599,10 +606,79 @@ impl Timeouts{
     }
 
 }
-
+#[allow(non_snake_case)]
+#[derive(Serialize,Deserialize,Debug)]
+pub struct PrintSettings{
+    orientation:String,
+    scale: f32,
+    background: bool,
+    page: Page,
+    margin: Margin,
+    shrinkToFit: bool,
+    pages: Vec<u32>
+}
+/*TODO !!!
+Методы для создания и настройки PrintSettings*/
+impl Default for PrintSettings{
+    fn default()->Self{
+        PrintSettings{
+            orientation:String::from("portrait"),
+            scale: 1.0,
+            background: false,
+            page: Page::default(),
+            margin: Margin::default(),
+            shrinkToFit: true,
+            pages: vec![] 
+        }
+    }
+}
+#[derive(Serialize,Deserialize,Debug)]
+pub struct Page{
+    width:f32,
+    height:f32,
+}
+impl Page{
+    pub fn new(width:f32, height: f32)->Self{
+        Page{width,height}
+    }
+    pub fn set_width(&mut self,width:f32){
+        self.width = width;
+    }
+    pub fn set_height(&mut self,height:f32){
+        self.height = height;
+    }
+}
+impl Default for Page{
+    fn default()->Self{
+        Page{width:21.59,height:27.94}
+    }
+}
+#[derive(Serialize,Deserialize,Debug)]
+pub struct Margin{
+    top:u32,
+    bottom:u32,
+    left:u32,
+    right:u32,
+}
+impl Margin{
+    pub fn new(top:u32,bottom:u32,left:u32,right:u32)->Self{
+        Margin{
+            top,bottom,left,right
+        }
+    }
+}
+impl Default for Margin{
+    fn default()->Self{
+        Margin{
+            top:1,
+            bottom:1,
+            left:1,
+            right:1,
+        }
+    }
+}
 
 //TESTS
-
 pub mod tests{
 
     use super::*;
@@ -925,14 +1001,27 @@ pub mod tests{
         br.open("https://vk.com");
         br.take_screenshot("screen.png").unwrap();
         br.close_browser();
+        let arr=std::fs::read("screen.png").unwrap().len();
+        assert!(arr>0);
     }
     #[test]
     fn el_screensh() {
         let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless","--window-size=800,600"]);
         br.open("https://vk.com");
         let el = br.find_element(LocStrategy::CSS("#ts_input"));
-        br.take_element_screenshot(el,"screen.png").unwrap();
+        br.take_element_screenshot(el,"element.png").unwrap();
         br.close_browser();
+        let arr=std::fs::read("element.png").unwrap().len();
+        assert!(arr>0);
+    }
+    #[test]
+    fn pr_page() {
+        let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless","--window-size=800,600"]);
+        br.open("https://vk.com");
+        br.print(PrintSettings::default(), "page.pdf").unwrap();
+        br.close_browser();
+        let arr=std::fs::read("page.pdf").unwrap().len();
+        assert!(arr>0);
     }
 
 }
