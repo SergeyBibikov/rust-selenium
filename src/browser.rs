@@ -337,7 +337,7 @@ impl Browser{
         }
         Err(String::from("Could not take a screenshot"))     
     }
-    pub fn take_element_screenshot(&self,elem:Element,path: &str)->Result<(),String>{
+    pub fn take_element_screenshot(&self,elem:&Element,path: &str)->Result<(),String>{
         let uri = format!("{}/{}/screenshot",self.element_url,elem.element_hash);
         if let Ok(resp) = send_request_screensh(Method::GET, &uri, vec![], ""){
             if let Ok(new) = base64::decode(resp){
@@ -370,12 +370,21 @@ impl Browser{
         }
         Ok(resp)
     }
+    ///Prints out the page. If you want to print it to pdf, use headless mode. The structs PrintSettings,Page and Margin allow you to customize the print.
     pub fn print(&self,print_settings:&PrintSettings,path:&str)->Result<(),String>{
         let pr_set_body = serde_json::to_string(&print_settings).unwrap();
         let resp = send_request_screensh(Method::POST, &self.print_page_url, self.cont_length_header(&pr_set_body), &pr_set_body).unwrap();
         let new = base64::decode(resp).unwrap();
         std::fs::write(path,new).unwrap();
         Ok(())
+    }
+    pub fn dismiss_alert(&self)->Result<(),String>{
+        let resp = send_and_read_body(Method::POST, &self.alert_dismiss_url, self.cont_length_header("{}"), "{}");
+        if resp ==r#"{"value":null}"#{Ok(())}else{Err(resp)}
+    }
+    pub fn allow_alert(&self)->Result<(),String>{
+        let resp = send_and_read_body(Method::POST, &self.alert_accept_url, self.cont_length_header("{}"), "{}");
+        if resp ==r#"{"value":null}"#{Ok(())}else{Err(resp)}
     }
 
 
@@ -1046,7 +1055,7 @@ pub mod tests{
         let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless","--window-size=800,600"]);
         br.open("https://vk.com");
         let el = br.find_element(LocStrategy::CSS("#ts_input"));
-        br.take_element_screenshot(el,"element.png").unwrap();
+        br.take_element_screenshot(&el,"element.png").unwrap();
         br.close_browser();
         let arr=std::fs::read("element.png").unwrap().len();
         assert!(arr>0);
@@ -1054,7 +1063,7 @@ pub mod tests{
     #[test]
     fn pr_page() {
         let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless","--window-size=2400,1200"]);
-        br.open("https://yandex.ru");
+        br.open("https://vk.com");
         let mut p  = PrintSettings::default();
         p.set_orientation(Orientation::LANDSCAPE);
         p.set_pages(vec![1,2]);
@@ -1062,6 +1071,16 @@ pub mod tests{
         br.close_browser();
         let arr=std::fs::read("page.pdf").unwrap().len();
         assert!(arr>0);
+    }
+
+    #[test]
+    fn alerts() {
+        let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless"]);
+        br.open("https://vk.com");
+        let resp = br.dismiss_alert().is_err();
+        let resp2 = br.allow_alert().is_err();
+        assert!(resp&&resp2);
+        br.close_browser();
     }
 
 }

@@ -73,10 +73,10 @@ fn read_response_screensh(mut stream: TcpStream) -> Result<Vec<u8>,Box<dyn Error
     std::thread::spawn(move || {
         loop{
             let mut b = vec![0;262144];
-            let bytes_num = stream.peek(&mut b).unwrap();
+            let bytes_num = stream.peek(&mut b).unwrap_or(0);
             let mut buff = vec![0;bytes_num];
-            stream.read(&mut buff).unwrap();
-            sender.send(buff).unwrap();
+            let _ = stream.read(&mut buff);
+            let _ = sender.send(buff);
         }
     });    
     
