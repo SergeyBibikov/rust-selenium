@@ -1,4 +1,4 @@
 #![allow(dead_code)]
 #![allow(unused_imports)]
 mod reqs;
-mod structs;
+mod browser;

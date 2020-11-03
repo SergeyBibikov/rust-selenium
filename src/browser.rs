@@ -98,6 +98,7 @@ impl Browser{
         dbg!(&resp);
         parse_value(&resp).replace("\"","")
     }
+    ///Deletes current session. As the Browser struct needs dropping, it is better to call drop() after this method in long-multibrowser scenarios.  
     pub fn close_browser(&mut self){
         send_request(Method::DELETE, &self.session_url, vec![], "").unwrap();
         self.session_url = String::from("");
@@ -369,7 +370,7 @@ impl Browser{
         }
         Ok(resp)
     }
-    pub fn print(&self,print_settings:PrintSettings,path:&str)->Result<(),String>{
+    pub fn print(&self,print_settings:&PrintSettings,path:&str)->Result<(),String>{
         let pr_set_body = serde_json::to_string(&print_settings).unwrap();
         let resp = send_request_screensh(Method::POST, &self.print_page_url, self.cont_length_header(&pr_set_body), &pr_set_body).unwrap();
         let new = base64::decode(resp).unwrap();
@@ -617,8 +618,32 @@ pub struct PrintSettings{
     shrinkToFit: bool,
     pages: Vec<u32>
 }
+impl PrintSettings{
+    pub fn new(orientation: Orientation,scale: f32,background:bool,page:Page,margin:Margin,shrink_tf:bool,pages:Vec<u32>)->Self{
+        if scale<0.1||scale>2.0{panic!("The condotion (0.1<=scale<= 2.0) is not fulfilled");}
+        let orientation = match orientation{
+            Orientation::PORTRAIT=>String::from("portrait"),
+            Orientation::LANDSCAPE=>String::from("landscape"),
+        };
+        PrintSettings{orientation,scale,background,page,margin,shrinkToFit: shrink_tf,pages}
+    }
+    pub fn set_orientation(&mut self,orientation: Orientation){
+        self.orientation = match orientation{
+            Orientation::PORTRAIT=>String::from("portrait"),
+            Orientation::LANDSCAPE=>String::from("landscape"),
+        };
+    }
+    pub fn set_scale(&mut self,scale:f32){
+        if scale<0.1||scale>2.0{panic!("The condotion (0.1<=scale<= 2.0) is not fulfilled");}
+        self.scale=scale;}
+    pub fn set_background(&mut self){}
+    pub fn set_page(&mut self,page:Page){self.page=page;}
+    pub fn set_margin(&mut self,margin:Margin){self.margin=margin;}
+    pub fn set_shrink_to_fit(&mut self,shr_to_fit:bool){self.shrinkToFit = shr_to_fit;}
+    pub fn set_pages(&mut self,pages:Vec<u32>){self.pages=pages;}
+}
 /*TODO !!!
-Методы для создания и настройки PrintSettings*/
+Методы для создания и настройки PrintSettings, добавить валидации на поля*/
 impl Default for PrintSettings{
     fn default()->Self{
         PrintSettings{
@@ -639,12 +664,15 @@ pub struct Page{
 }
 impl Page{
     pub fn new(width:f32, height: f32)->Self{
+        if width<0.0||height<0.0{panic!("Width and height can't be less then 0.0");}
         Page{width,height}
     }
     pub fn set_width(&mut self,width:f32){
+        if width<0.0{panic!("Width cannot be less then 0.0");}
         self.width = width;
     }
     pub fn set_height(&mut self,height:f32){
+        if height<0.0{panic!("Height cannot be less then 0.0");}
         self.height = height;
     }
 }
@@ -666,6 +694,10 @@ impl Margin{
             top,bottom,left,right
         }
     }
+    pub fn set_top(&mut self,top:u32){self.top=top;}
+    pub fn set_bottom(&mut self,bottom:u32){self.bottom=bottom}
+    pub fn set_left(&mut self,left:u32){self.left=left;}
+    pub fn set_right(&mut self,right:u32){self.right=right;}
 }
 impl Default for Margin{
     fn default()->Self{
@@ -676,6 +708,10 @@ impl Default for Margin{
             right:1,
         }
     }
+}
+pub enum Orientation{
+    PORTRAIT,
+    LANDSCAPE
 }
 
 //TESTS
@@ -709,7 +745,7 @@ pub mod tests{
     fn close_browser() {
         let mut browser = Browser::start_session("chrome", consts::OS,vec!["--headless"]);
         browser.open("http://localhost:4444/wd/hub/status");
-        browser.close_browser();
+        browser.close_browser();        
         let a = browser.get_link();
         if a.contains("invalid"){panic!("Invalid session id");}
     }
@@ -814,7 +850,8 @@ pub mod tests{
             handles = br.get_window_handles();
             br.close_browser();
         }
-        assert_eq!(handles.len(),1);
+        let len = handles.len();
+        assert_eq!(len,1);
     }
     #[test]
     fn close_window() {
@@ -1016,9 +1053,12 @@ pub mod tests{
     }
     #[test]
     fn pr_page() {
-        let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless","--window-size=800,600"]);
-        br.open("https://vk.com");
-        br.print(PrintSettings::default(), "page.pdf").unwrap();
+        let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless","--window-size=2400,1200"]);
+        br.open("https://yandex.ru");
+        let mut p  = PrintSettings::default();
+        p.set_orientation(Orientation::LANDSCAPE);
+        p.set_pages(vec![1,2]);
+        br.print(&p, "page.pdf").unwrap();
         br.close_browser();
         let arr=std::fs::read("page.pdf").unwrap().len();
         assert!(arr>0);
