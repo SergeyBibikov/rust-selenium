@@ -391,7 +391,18 @@ impl Browser{
         let resp = send_and_read_body(Method::POST, &self.alert_accept_url, cont_length_header("{}"), "{}");
         if resp ==r#"{"value":null}"#{Ok(())}else{Err(resp)}
     }
-
+    pub fn get_alert_text(&self)->Result<String,String>{
+        let resp = send_and_read_body(Method::GET, &self.alert_text_url, vec![], "");
+        if resp.contains("error"){return Err(resp);}
+        let map:HashMap<&str,String> = serde_json::from_str(&resp).unwrap();
+        Ok((*map.get("value").unwrap()).to_string())
+    }
+    pub fn send_alert_text(&self,text:&str)->Result<(),String>{
+        let body =format!(r#"{{"text":{}}}"#,text) ;
+        let resp = send_and_read_body(Method::POST, &self.alert_dismiss_url, cont_length_header(&body), &body);
+        if resp.contains("error"){return Err(resp);}
+        Ok(())
+    }
 }
 pub (self) mod utils{
     use super::*;
@@ -1088,8 +1099,17 @@ pub mod tests{
         br.open("https://vk.com");
         let resp = br.dismiss_alert().is_err();
         let resp2 = br.allow_alert().is_err();
-        assert!(resp&&resp2);
         br.close_browser();
+        assert!(resp&&resp2);
+    }
+    #[test]
+    fn get_send_alert_text() {
+        let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless"]);
+        br.open("https://vk.com");
+        let resp = br.get_alert_text().is_err();
+        let resp2 = br.send_alert_text("I am the text").is_err();
+        br.close_browser();
+        assert!(resp&&resp2);
     }
 
 }
