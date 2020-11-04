@@ -50,11 +50,25 @@ impl Element{
         let map: HashMap<&str,bool> = serde_json::from_str(&resp).unwrap();
         Ok(*map.get("value").unwrap())
     }
-    pub fn get_attribute(&self,attribute_name: &str){
+    pub fn get_attribute(&self,attribute_name: &str)->Result<String,String>{
         let url = format!("{}/attribute/{}",self.element_url,attribute_name);
-        
+        let resp = send_and_read_body(Method::GET, &url, vec![], "");
+        if resp.contains("error"){return Err(resp);}
+        if resp.as_bytes()==br#"{"value":null}"#{return Ok("null".to_string());}
+        let map:HashMap<&str,String> = serde_json::from_str(&resp).unwrap();
+        Ok((*map.get("value").unwrap()).clone())
     }
-    pub fn get_property(&self,property_name:&str){let url = format!("{}/property/{}",self.element_url,property_name) ;}
+    ///Due to the large number of structure variants that may be returned by this function,
+    /// parsing the String response to the necessary type is left for the lib users
+    pub fn get_property(&self,property_name:&str)->Result<String,String>{
+        let url = format!("{}/property/{}",self.element_url,property_name);
+        let resp = send_and_read_body(Method::GET, &url, vec![], "");
+        if resp.contains("error"){return Err(resp);}
+        if resp.as_bytes()==br#"{"value":null}"#{
+            return Ok(String::from("null"));
+        }else{Ok(resp)}
+
+    }
     pub fn get_css_value(&self,property_name:&str){let url = format!("{}/css/{}",self.element_url,property_name) ;}
     pub fn get_element_text(&self){let url = format!("{}/text",self.element_url) ;}
     pub fn get_tag_name(&self){let url = format!("{}/name",self.element_url) ;}

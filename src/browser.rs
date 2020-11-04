@@ -1124,4 +1124,25 @@ pub mod tests{
         br.close_browser();
         assert!(res==false);
     }
+    #[test]
+    fn get_arrtib() {
+        let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless","--window-size=400,200"]);
+        br.open("https://vk.com");
+        let el= br.find_element(LocatorStrategy::CSS(".placeholder_content"));
+        let res = el.get_attribute("aria-hidde").unwrap();
+        let res2 = el.get_attribute("aria-hidden").unwrap();
+        br.close_browser();
+        assert!(res.as_str()=="null");
+        assert!(res2.as_str()=="true");
+    }
+    #[test]
+    fn get_property() {
+        let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless","--window-size=400,200"]);
+        br.open("https://vk.com");
+        let el= br.find_element(LocatorStrategy::CSS("#index_login_form"));
+        let res_len = el.get_property("attributes").unwrap().len();
+        let res_null = el.get_property("attributes2").unwrap();
+        br.close_browser();
+        assert!(res_len>5000&&res_null.as_str()=="null");
+    }
 }
