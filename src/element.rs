@@ -1,10 +1,11 @@
+use super::reqs::*;
+
 #[derive(Debug)]
 pub struct Element{
     pub(crate)element_gr_id: String,
     pub(crate)element_id: String,
     pub(crate)element_url: String,
 }
-
 impl Element{
     pub fn find_element_from_self(&self){}
     pub fn find_elements_from_self(&self){}
@@ -22,10 +23,10 @@ impl Element{
     pub fn clear_element(&self){}
     pub fn send_keys(&self){}
 }
-/*
+
 pub mod el_tests{
     #[test]
-    fn () {
-        unimplemented!();
+    fn one() {
+        assert!(true);
     }
-}*/
+}

@@ -214,7 +214,7 @@ impl Browser{
         Ok(Element{
             element_gr_id:res.0.clone(),
             element_id:res.1.clone(),
-            element_url: format!("{}/element",self.session_url),
+            element_url: format!("{}/element/{}",self.session_url,res.1.clone()),
         })
     }
     pub fn find_element(&self,loc_strategy:LocStrategy)->Element{
@@ -226,7 +226,7 @@ impl Browser{
         Element{
             element_gr_id:res.0.clone(),
             element_id:res.1.clone(),
-            element_url: format!("{}/element",self.session_url),
+            element_url: format!("{}/element/{}",self.session_url,res.1.clone()),
         }
     }
     pub fn find_elements(&self,loc_strategy:LocStrategy)->Vec<Element>{
@@ -235,14 +235,14 @@ impl Browser{
         let resp=send_and_read_body(Method::POST, &self.elements_url, cont_length_header(&body), &body);
         let resp = parse_value(&resp);
         let map: Vec<HashMap<String,String>> = serde_json::from_str(&resp).unwrap();
-        let element_url = format!("{}/element",self.session_url);
+        let element_ur = format!("{}/element",self.session_url);
         for i in map{
-            let element_url = element_url.clone();
+            let element_ur = element_ur.clone();
             let res = i.iter().next().unwrap();
             result.push(Element{
             element_gr_id:res.0.clone(),
             element_id:res.1.clone(),
-            element_url
+            element_url:format!("{}/{}",element_ur,res.1.clone()),
             });
         }
         result
@@ -428,18 +428,12 @@ pub (self) mod utils{
             LocStrategy::XPATH(selector)=>format!(r#"{{"using":"xpath","value":"{}"}}"#,selector)
         }
     }
-    pub (super) fn cont_length_header(content:&str)->Vec<String>{
-        vec![format!("Content-Length:{}",content.len()+2)]
-    }
     pub (super) fn parse_value(body: &str)->String{
         let resp = body.replace("\n","").replace(" ","").replace(r#"{"value":"#,"");
         let mut resp_vec: Vec<char> = resp.chars().collect();
         resp_vec.pop();
         let result: String = resp_vec.iter().collect();
         result
-    }
-    pub (super) fn send_and_read_body(method: Method, path: &str, headers: Vec<String>, body: &str)->String{
-        resp_body(send_request(method, path, headers, body).unwrap()).unwrap()
     }
     pub (super) fn create_session_body_json(browser:&str,os:&str, args:Vec<&str>)->String{
             match browser{

@@ -32,6 +32,9 @@ pub(crate) fn resp_body(response: String)->Result<String,&'static str>{
     } else {Err("Can't get the response body")}
 
 }
+pub (crate) fn send_and_read_body(method: Method, path: &str, headers: Vec<String>, body: &str)->String{
+    resp_body(send_request(method, path, headers, body).unwrap()).unwrap()
+}
 
 fn create_req(method: Method, path: &str, headers: Vec<String>, body: &str) -> String {
     let mut request = match &method {
@@ -116,6 +119,9 @@ fn read_response_screensh(mut stream: TcpStream) -> Result<Vec<u8>,Box<dyn Error
     let mut res = vec![];
     res.extend_from_slice(&result_buf[index+1..len-2]);
     Ok(res)
+}
+pub (crate) fn cont_length_header(content:&str)->Vec<String>{
+    vec![format!("Content-Length:{}",content.len()+2)]
 }
 
 //TESTS FOR PRIVATE FUNCTIONS
