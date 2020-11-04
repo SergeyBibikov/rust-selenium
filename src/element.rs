@@ -75,8 +75,20 @@ impl Element{
         let resp = send_and_read_body(Method::GET, &url, vec![], "");
         if resp.contains("error"){return Err(resp);}else{Ok(resp)}      
     }
-    pub fn get_element_text(&self){let url = format!("{}/text",self.element_url) ;}
-    pub fn get_tag_name(&self){let url = format!("{}/name",self.element_url) ;}
+    pub fn get_element_text(&self)->Result<String,String>{
+        let url = format!("{}/text",self.element_url);
+        let resp = send_and_read_body(Method::GET, &url, vec![], "");
+        if resp.contains("error"){return Err(resp);}
+        let map: HashMap<&str,String> = serde_json::from_str(&resp).unwrap();
+        Ok((*map.get("value").unwrap()).clone())
+    }
+    pub fn get_tag_name(&self)->Result<String,String>{
+        let url = format!("{}/name",self.element_url);
+        let resp = send_and_read_body(Method::GET, &url, vec![], "");
+        if resp.contains("error"){return Err(resp);}
+        let map: HashMap<&str,String> = serde_json::from_str(&resp).unwrap();
+        Ok((*map.get("value").unwrap()).clone())
+    }
     pub fn get_element_rect(&self){let url = format!("{}/rect",self.element_url) ;}
     pub fn is_enabled(&self){let url = format!("{}/enabled",self.element_url) ;}
     pub fn get_computed_role(&self){let url = format!("{}/computedrole",self.element_url) ;}

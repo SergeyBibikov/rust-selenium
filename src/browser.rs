@@ -1154,4 +1154,22 @@ pub mod tests{
         br.close_browser();
         assert!(res);
     }
+    #[test]
+    fn get_el_text() {
+        let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless","--window-size=400,200"]);
+        br.open("https://vk.com");
+        let el= br.find_element(LocatorStrategy::CSS("#index_login_form"));
+        let res = el.get_element_text().unwrap().contains("error");
+        br.close_browser();
+        assert!(!res);
+    }
+    #[test]
+    fn get_el_tag() {
+        let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless","--window-size=400,200"]);
+        br.open("https://vk.com");
+        let el= br.find_element(LocatorStrategy::CSS("#index_login_form"));
+        let res = el.get_tag_name().unwrap().contains("error");
+        br.close_browser();
+        assert!(!res);
+    }
 }
