@@ -91,7 +91,7 @@ impl Browser{
     }
     pub fn open(&self,url:&str){
         let body = format!(r#"{{"url":"{}"}}"#,url);
-        send_request(Method::POST, &self.go_to_url, self.cont_length_header(&body), &body).unwrap();
+        send_request(Method::POST, &self.go_to_url, cont_length_header(&body), &body).unwrap();
     }
     pub fn get_link(&self)->String{
         let resp = resp_body(send_request(Method::GET, &self.go_to_url, vec![], "").unwrap()).unwrap();
@@ -109,7 +109,7 @@ impl Browser{
     }
     pub fn set_timeouts(&self, timeouts: &Timeouts)->Result<(),&str>{
         let timeouts_json = serde_json::to_string(timeouts).unwrap();
-        if let Ok(mess)= send_request(Method::POST, &self.timeouts_url, self.cont_length_header(&timeouts_json), &timeouts_json){
+        if let Ok(mess)= send_request(Method::POST, &self.timeouts_url, cont_length_header(&timeouts_json), &timeouts_json){
             if let Ok (body) = resp_body(mess){
                 if body.as_str() == r#"{"value":null}"#{
                     return Ok(())
@@ -120,15 +120,15 @@ impl Browser{
     }
     pub fn back(&self){
         let body = r#"{"return":true}"#;
-        send_request(Method::POST,&self.back_url, self.cont_length_header(&body), &body).unwrap();
+        send_request(Method::POST,&self.back_url, cont_length_header(&body), &body).unwrap();
     }
     pub fn forward(&self){
         let body = r#"{"forward":true}"#;
-        send_request(Method::POST,&self.forward_url, self.cont_length_header(&body), &body).unwrap();
+        send_request(Method::POST,&self.forward_url, cont_length_header(&body), &body).unwrap();
     }
     pub fn refresh(&self)->Result<(),&str>{
         let body = r#"{"refresh":true}"#;
-        if let Ok (mess) = send_request(Method::POST,&self.refresh_url, self.cont_length_header(&body), &body){
+        if let Ok (mess) = send_request(Method::POST,&self.refresh_url, cont_length_header(&body), &body){
             if let Ok (body) = resp_body(mess){
                 if body.as_str()!=r#"{"value":null}"#{
                    return Err("The refresh did not succeed")
@@ -155,7 +155,7 @@ impl Browser{
     }
     pub fn switch_to_window(&self, window_id: String)->Result<(),String>{
         let body = format!(r#"{{"handle":"{}"}}"#,window_id);
-        let resp = send_and_read_body(Method::POST, &self.window_url, self.cont_length_header(&body), &body);
+        let resp = send_and_read_body(Method::POST, &self.window_url, cont_length_header(&body), &body);
         if resp.as_str()==r#"{"value":null}"#{
             Ok(())
         }else{Err(resp)}
@@ -165,7 +165,7 @@ impl Browser{
             NewWindowType::Tab=>r#"{"type":"tab"}"#,
             NewWindowType::Window=>r#"{"type":"window"}"#,
         };
-        let resp=send_and_read_body(Method::POST, &self.window_new_url, self.cont_length_header(&body), &body);
+        let resp=send_and_read_body(Method::POST, &self.window_new_url, cont_length_header(&body), &body);
         let resp = parse_value(&resp);
         let map: HashMap<&str,String> = serde_json::from_str(&resp).unwrap();
         let handle = map.get("handle").unwrap().clone();
@@ -180,7 +180,7 @@ impl Browser{
     }
     pub fn switch_to_frame_by_id(&self, id: u64)->Result<(),String>{
         let body = format!(r#"{{"id":{}}}"#,id);
-        let resp = send_and_read_body(Method::POST, &self.frame_url, self.cont_length_header(&body), &body);
+        let resp = send_and_read_body(Method::POST, &self.frame_url, cont_length_header(&body), &body);
         if resp.as_str()!=r#"{"value":null}"#{
             return Err(resp);
         }
@@ -188,7 +188,7 @@ impl Browser{
     }
     pub fn switch_to_frame_by_element(&self, element:Element)->Result<(),String>{
         let body = format!(r#"{{"id":{{"{}":"{}"}}}}"#,element.element_id,element.element_hash);
-        let resp = send_and_read_body(Method::POST, &self.frame_url, self.cont_length_header(&body), &body);
+        let resp = send_and_read_body(Method::POST, &self.frame_url, cont_length_header(&body), &body);
         if resp.as_str()!=r#"{"value":null}"#{
             return Err(resp);
         }
@@ -197,15 +197,15 @@ impl Browser{
     }
     pub fn switch_to_parent_frame(&self)->Result<(),String>{
         let body = r#"{}"#;
-        let resp = send_and_read_body(Method::POST, &self.frame_parent_url, self.cont_length_header(&body), &body);
+        let resp = send_and_read_body(Method::POST, &self.frame_parent_url, cont_length_header(&body), &body);
         if resp.as_str()!=r#"{"value":null}"#{
             return Err(resp);
         }
         Ok(())
     }
     pub fn find_element(&self,loc_strategy:LocStrategy)->Element{
-        let body = self.body_for_find_element(loc_strategy);
-        let resp=send_and_read_body(Method::POST, &self.element_url, self.cont_length_header(&body), &body);
+        let body = body_for_find_element(loc_strategy);
+        let resp=send_and_read_body(Method::POST, &self.element_url, cont_length_header(&body), &body);
         let resp = parse_value(&resp);
         let map: HashMap<String,String> = serde_json::from_str(&resp).unwrap();
         let res = map.iter().next().unwrap();
@@ -217,8 +217,8 @@ impl Browser{
     }
     pub fn find_elements(&self,loc_strategy:LocStrategy)->Vec<Element>{
         let mut result = vec![];
-        let body = self.body_for_find_element(loc_strategy);
-        let resp=send_and_read_body(Method::POST, &self.elements_url, self.cont_length_header(&body), &body);
+        let body = body_for_find_element(loc_strategy);
+        let resp=send_and_read_body(Method::POST, &self.elements_url, cont_length_header(&body), &body);
         let resp = parse_value(&resp);
         let map: Vec<HashMap<String,String>> = serde_json::from_str(&resp).unwrap();
         let element_url = format!("{}/element",self.session_url);
@@ -240,7 +240,7 @@ impl Browser{
     }
     pub fn set_sindow_rect(&self, window_rect:&WindowRect)->Result<WindowRect,String>{
         let body = serde_json::to_string(window_rect).unwrap();
-        let resp = send_and_read_body(Method::POST, &self.window_rect_url, self.cont_length_header(&body), &body);
+        let resp = send_and_read_body(Method::POST, &self.window_rect_url, cont_length_header(&body), &body);
         let resp = parse_value(&resp);
         let map:Result<WindowRect,serde_json::Error> = serde_json::from_str(&resp);
         match map{
@@ -253,7 +253,7 @@ impl Browser{
     }
     pub fn maximize_window(&self)->Result<WindowRect,String>{
         let body = r#"{}"#;
-        let resp = send_and_read_body(Method::POST, &self.window_maximize_url, self.cont_length_header(&body), &body);
+        let resp = send_and_read_body(Method::POST, &self.window_maximize_url, cont_length_header(&body), &body);
         let resp = parse_value(&resp);
         if resp.contains("height")&&resp.contains("width"){
             let res: WindowRect = serde_json::from_str(&resp).unwrap();
@@ -263,7 +263,7 @@ impl Browser{
     }
     pub fn minimize_window(&self)->Result<WindowRect,String>{
         let body = r#"{}"#;
-        let resp = send_and_read_body(Method::POST, &self.window_minimize_url, self.cont_length_header(&body), &body);
+        let resp = send_and_read_body(Method::POST, &self.window_minimize_url, cont_length_header(&body), &body);
         let resp = parse_value(&resp);
         if resp.contains("height")&&resp.contains("width"){
             let res: WindowRect = serde_json::from_str(&resp).unwrap();
@@ -272,7 +272,7 @@ impl Browser{
     }
     pub fn fullscreen(&self)->Result<WindowRect,String>{
         let body = r#"{}"#;
-        let resp = send_and_read_body(Method::POST, &self.window_fullscreen_url, self.cont_length_header(&body), &body);
+        let resp = send_and_read_body(Method::POST, &self.window_fullscreen_url, cont_length_header(&body), &body);
         let resp = parse_value(&resp);
         if resp.contains("height"){
             Ok(serde_json::from_str(&resp).unwrap())
@@ -305,7 +305,7 @@ impl Browser{
     pub fn add_cookie(&self,cookie:Cookie)->Result<(),String>{
         let cook = serde_json::to_string(&cookie).unwrap();
         let body =format!(r#"{{"cookie": {} }}"#,cook);
-        let resp = send_and_read_body(Method::POST, &self.cookie_url, self.cont_length_header(&body), &body);
+        let resp = send_and_read_body(Method::POST, &self.cookie_url, cont_length_header(&body), &body);
         if resp==r#"{"value":null}"#{
             return Ok(());
         }
@@ -343,7 +343,7 @@ impl Browser{
             if let Ok(new) = base64::decode(resp){
                 match std::fs::write(path,new){
                     Ok(())=>return Ok(()),
-                    Err(message)=> return Err(message.to_string()),
+                    Err(message)=>return Err(message.to_string())
                 }
             }
         }
@@ -354,7 +354,7 @@ impl Browser{
     pub fn execute_sync(&self, script: &str, args: &Vec<&str>)->Result<String,String>{
         let args = gen_script_args(args);
         let body = format!(r#"{{"script":"{}","args":{}}}"#,script,args);
-        let resp = send_and_read_body(Method::POST, &self.execute_sync_url, self.cont_length_header(&body), &body);
+        let resp = send_and_read_body(Method::POST, &self.execute_sync_url, cont_length_header(&body), &body);
         if resp.contains("error"){
             return Err(resp);
         }
@@ -364,7 +364,7 @@ impl Browser{
     pub fn execute_async(&self, script: &str, args: &Vec<&str>)->Result<String,String>{
         let args = gen_script_args(args);
         let body = format!(r#"{{"script":"{}","args":{}}}"#,script,args);
-        let resp = send_and_read_body(Method::POST, &self.execute_async_url, self.cont_length_header(&body), &body);
+        let resp = send_and_read_body(Method::POST, &self.execute_async_url, cont_length_header(&body), &body);
         if resp.contains("error"){
             return Err(resp);
         }
@@ -373,25 +373,25 @@ impl Browser{
     ///Prints out the page. If you want to print it to pdf, use headless mode. The structs PrintSettings,Page and Margin allow you to customize the print.
     pub fn print(&self,print_settings:&PrintSettings,path:&str)->Result<(),String>{
         let pr_set_body = serde_json::to_string(&print_settings).unwrap();
-        let resp = send_request_screensh(Method::POST, &self.print_page_url, self.cont_length_header(&pr_set_body), &pr_set_body).unwrap();
+        let resp = send_request_screensh(Method::POST, &self.print_page_url, cont_length_header(&pr_set_body), &pr_set_body).unwrap();
         let new = base64::decode(resp).unwrap();
         std::fs::write(path,new).unwrap();
         Ok(())
     }
     pub fn dismiss_alert(&self)->Result<(),String>{
-        let resp = send_and_read_body(Method::POST, &self.alert_dismiss_url, self.cont_length_header("{}"), "{}");
+        let resp = send_and_read_body(Method::POST, &self.alert_dismiss_url, cont_length_header("{}"), "{}");
         if resp ==r#"{"value":null}"#{Ok(())}else{Err(resp)}
     }
     pub fn allow_alert(&self)->Result<(),String>{
-        let resp = send_and_read_body(Method::POST, &self.alert_accept_url, self.cont_length_header("{}"), "{}");
+        let resp = send_and_read_body(Method::POST, &self.alert_accept_url, cont_length_header("{}"), "{}");
         if resp ==r#"{"value":null}"#{Ok(())}else{Err(resp)}
     }
 
+    
+    
 
-    fn cont_length_header(&self,content:&str)->Vec<String>{
-        vec![format!("Content-Length:{}",content.len()+2)]
-    }
-    fn body_for_find_element(&self,loc_strategy:LocStrategy)->String{
+}
+    fn body_for_find_element(loc_strategy:LocStrategy)->String{
         match loc_strategy{
             LocStrategy::CSS(selector)=>format!(r#"{{"using":"css selector","value":"{}"}}"#,selector),
             LocStrategy::LINKTEXT(selector)=>format!(r#"{{"using":"link text","value":"{}"}}"#,selector),
@@ -400,8 +400,9 @@ impl Browser{
             LocStrategy::XPATH(selector)=>format!(r#"{{"using":"xpath","value":"{}"}}"#,selector)
         }
     }
-
-}
+    fn cont_length_header(content:&str)->Vec<String>{
+        vec![format!("Content-Length:{}",content.len()+2)]
+    }
     fn parse_value(body: &str)->String{
         let resp = body.replace("\n","").replace(" ","").replace(r#"{"value":"#,"");
         let mut resp_vec: Vec<char> = resp.chars().collect();
