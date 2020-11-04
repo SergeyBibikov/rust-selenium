@@ -3,6 +3,7 @@ extern crate base64;
 use serde::{Serialize,Deserialize};
 use super::reqs::*;
 use std::collections::HashMap;
+use self::utils::*;
 
 #[derive(Serialize,Deserialize)]
 struct Value{
@@ -378,6 +379,10 @@ impl Browser{
         std::fs::write(path,new).unwrap();
         Ok(())
     }
+    
+}
+
+impl Browser{
     pub fn dismiss_alert(&self)->Result<(),String>{
         let resp = send_and_read_body(Method::POST, &self.alert_dismiss_url, cont_length_header("{}"), "{}");
         if resp ==r#"{"value":null}"#{Ok(())}else{Err(resp)}
@@ -387,11 +392,10 @@ impl Browser{
         if resp ==r#"{"value":null}"#{Ok(())}else{Err(resp)}
     }
 
-    
-    
-
 }
-    fn body_for_find_element(loc_strategy:LocStrategy)->String{
+pub (self) mod utils{
+    use super::*;
+    pub (super) fn body_for_find_element(loc_strategy:LocStrategy)->String{
         match loc_strategy{
             LocStrategy::CSS(selector)=>format!(r#"{{"using":"css selector","value":"{}"}}"#,selector),
             LocStrategy::LINKTEXT(selector)=>format!(r#"{{"using":"link text","value":"{}"}}"#,selector),
@@ -400,33 +404,33 @@ impl Browser{
             LocStrategy::XPATH(selector)=>format!(r#"{{"using":"xpath","value":"{}"}}"#,selector)
         }
     }
-    fn cont_length_header(content:&str)->Vec<String>{
+    pub (super) fn cont_length_header(content:&str)->Vec<String>{
         vec![format!("Content-Length:{}",content.len()+2)]
     }
-    fn parse_value(body: &str)->String{
+    pub (super) fn parse_value(body: &str)->String{
         let resp = body.replace("\n","").replace(" ","").replace(r#"{"value":"#,"");
         let mut resp_vec: Vec<char> = resp.chars().collect();
         resp_vec.pop();
         let result: String = resp_vec.iter().collect();
         result
     }
-    fn send_and_read_body(method: Method, path: &str, headers: Vec<String>, body: &str)->String{
+    pub (super) fn send_and_read_body(method: Method, path: &str, headers: Vec<String>, body: &str)->String{
         resp_body(send_request(method, path, headers, body).unwrap()).unwrap()
     }
-    fn create_session_body_json(browser:&str,os:&str, args:Vec<&str>)->String{
+    pub (super) fn create_session_body_json(browser:&str,os:&str, args:Vec<&str>)->String{
             match browser{
                 "chrome"=> create_chrome_session(os,args),
                 _=>panic!("Sorry, so far only chrome is supported")
             }
     }
-    fn create_chrome_session(os:&str,args:Vec<&str>)->String{
+    pub (super) fn create_chrome_session(os:&str,args:Vec<&str>)->String{
             let one=format!(r#"{{"capabilities": {{"alwaysMatch":{{"platformName":"{}"}}"#,os);
             let args = gen_args(args);
             let two=format!(r#"{},"firstMatch":[{{"browserName":"chrome","goog:chromeOptions":{{"args":{}}}}}]}}}}"#,one,args);
             two
     }
 
-    fn gen_args(args:Vec<&str>)->String{
+    pub (super) fn gen_args(args:Vec<&str>)->String{
             if args.len()==0{
                 return String::from("[]");
             }
@@ -441,7 +445,7 @@ impl Browser{
             result.push_str("]");
             result
     }
-    fn gen_script_args(args:&Vec<&str>)->String{
+    pub (super) fn gen_script_args(args:&Vec<&str>)->String{
         if args.len()==0{
             return String::from("[]");
         }
@@ -451,7 +455,7 @@ impl Browser{
         result.push_str("]");
         result
     }
-    fn from_value_to_cookie(val: &serde_json::Value)->Cookie{
+    pub (super) fn from_value_to_cookie(val: &serde_json::Value)->Cookie{
         let name = String::from(val["name"].as_str().unwrap());
         let value = String::from(val["value"].as_str().unwrap());
         let mut domain = String::from("");
@@ -479,6 +483,7 @@ impl Browser{
             same_site=String::from(same);
         }
         Cookie{name,value,path,expiry,secure,domain,httpOnly: http_only,sameSite:same_site}
+    }
     }
     
 /*
@@ -1050,6 +1055,7 @@ pub mod tests{
         br.close_browser();
         let arr=std::fs::read("screen.png").unwrap().len();
         assert!(arr>0);
+        std::fs::remove_file("screen.png").unwrap();
     }
     #[test]
     fn el_screensh() {
@@ -1060,6 +1066,7 @@ pub mod tests{
         br.close_browser();
         let arr=std::fs::read("element.png").unwrap().len();
         assert!(arr>0);
+        std::fs::remove_file("element.png").unwrap();
     }
     #[test]
     fn pr_page() {
@@ -1072,6 +1079,7 @@ pub mod tests{
         br.close_browser();
         let arr=std::fs::read("page.pdf").unwrap().len();
         assert!(arr>0);
+        std::fs::remove_file("page.pdf").unwrap();
     }
 
     #[test]
