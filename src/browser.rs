@@ -4,6 +4,7 @@ use serde::{Serialize,Deserialize};
 use super::reqs::*;
 use std::collections::HashMap;
 use self::utils::*;
+use super::element::*;
 
 #[derive(Serialize,Deserialize)]
 struct Value{
@@ -188,7 +189,7 @@ impl Browser{
         Ok(())
     }
     pub fn switch_to_frame_by_element(&self, element:Element)->Result<(),String>{
-        let body = format!(r#"{{"id":{{"{}":"{}"}}}}"#,element.element_id,element.element_hash);
+        let body = format!(r#"{{"id":{{"{}":"{}"}}}}"#,element.element_gr_id,element.element_id);
         let resp = send_and_read_body(Method::POST, &self.frame_url, cont_length_header(&body), &body);
         if resp.as_str()!=r#"{"value":null}"#{
             return Err(resp);
@@ -211,8 +212,8 @@ impl Browser{
         let map: HashMap<String,String> = serde_json::from_str(&resp).unwrap();
         let res = map.iter().next().unwrap();
         Element{
-            element_id:res.0.clone(),
-            element_hash:res.1.clone(),
+            element_gr_id:res.0.clone(),
+            element_id:res.1.clone(),
             element_url: format!("{}/element",self.session_url),
         }
     }
@@ -227,8 +228,8 @@ impl Browser{
             let element_url = element_url.clone();
             let res = i.iter().next().unwrap();
             result.push(Element{
-            element_id:res.0.clone(),
-            element_hash:res.1.clone(),
+            element_gr_id:res.0.clone(),
+            element_id:res.1.clone(),
             element_url
             });
         }
@@ -339,7 +340,7 @@ impl Browser{
         Err(String::from("Could not take a screenshot"))     
     }
     pub fn take_element_screenshot(&self,elem:&Element,path: &str)->Result<(),String>{
-        let uri = format!("{}/{}/screenshot",self.element_url,elem.element_hash);
+        let uri = format!("{}/{}/screenshot",self.element_url,elem.element_id);
         if let Ok(resp) = send_request_screensh(Method::GET, &uri, vec![], ""){
             if let Ok(new) = base64::decode(resp){
                 match std::fs::write(path,new){
@@ -515,12 +516,6 @@ pub enum LocStrategy{
     XPATH(&'static str)
 }
 
-#[derive(Debug)]
-pub struct Element{
-    pub(self)element_id: String,
-    pub(self)element_hash: String,
-    pub(self)element_url: String,
-}
 
 #[derive(Serialize,Deserialize,Debug,PartialEq,Clone)]
 pub struct WindowRect{
@@ -924,7 +919,7 @@ pub mod tests{
         el = br.find_element(LocStrategy::CSS("#ts_input"));
         br.close_browser();
         }
-        let tr =el.element_id.contains("element"); 
+        let tr =el.element_gr_id.contains("element"); 
         assert!(tr);
     }
     #[test]
