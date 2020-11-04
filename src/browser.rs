@@ -420,13 +420,6 @@ impl Browser{
 pub (self) mod utils{
     use super::*;
 
-    pub (super) fn parse_value(body: &str)->String{
-        let resp = body.replace("\n","").replace(" ","").replace(r#"{"value":"#,"");
-        let mut resp_vec: Vec<char> = resp.chars().collect();
-        resp_vec.pop();
-        let result: String = resp_vec.iter().collect();
-        result
-    }
     pub (super) fn create_session_body_json(browser:&str,os:&str, args:Vec<&str>)->String{
             match browser{
                 "chrome"=> create_chrome_session(os,args),
@@ -494,7 +487,7 @@ pub (self) mod utils{
         }
         Cookie{name,value,path,expiry,secure,domain,httpOnly: http_only,sameSite:same_site}
     }
-    }
+}
     
 /*
 TODO
@@ -1100,6 +1093,15 @@ pub mod tests{
         let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless"]);
         br.open("https://vk.com");
         let a = br.get_active_element().unwrap();
+        br.close_browser();
+        assert!(a.element_gr_id.contains("element"));
+    }
+    #[test]
+    fn find_sub_el() {
+        let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless","--window-size=400,200"]);
+        br.open("https://vk.com");
+        let par_el= br.find_element(LocatorStrategy::CSS("#top_nav"));
+        let a = par_el.find_element_from_self(LocatorStrategy::CSS(".HeaderNav__item")).unwrap();
         br.close_browser();
         assert!(a.element_gr_id.contains("element"));
     }

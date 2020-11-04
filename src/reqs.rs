@@ -130,7 +130,6 @@ fn read_response_screensh(mut stream: TcpStream) -> Result<Vec<u8>,Box<dyn Error
 pub (crate) fn cont_length_header(content:&str)->Vec<String>{
     vec![format!("Content-Length:{}",content.len()+2)]
 }
-
 pub (crate) fn body_for_find_element(loc_strategy:LocatorStrategy)->String{
     match loc_strategy{
         LocatorStrategy::CSS(selector)=>format!(r#"{{"using":"css selector","value":"{}"}}"#,selector),
@@ -139,6 +138,13 @@ pub (crate) fn body_for_find_element(loc_strategy:LocatorStrategy)->String{
         LocatorStrategy::TAGNAME(selector)=>format!(r#"{{"using":"tag name","value":"{}"}}"#,selector),
         LocatorStrategy::XPATH(selector)=>format!(r#"{{"using":"xpath","value":"{}"}}"#,selector)
     }
+}
+pub (crate) fn parse_value(body: &str)->String{
+    let resp = body.replace("\n","").replace(" ","").replace(r#"{"value":"#,"");
+    let mut resp_vec: Vec<char> = resp.chars().collect();
+    resp_vec.pop();
+    let result: String = resp_vec.iter().collect();
+    result
 }
 
 //TESTS FOR PRIVATE FUNCTIONS
