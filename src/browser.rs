@@ -1145,4 +1145,13 @@ pub mod tests{
         br.close_browser();
         assert!(res_len>5000&&res_null.as_str()=="null");
     }
+    #[test]
+    fn get_css_property() {
+        let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless","--window-size=400,200"]);
+        br.open("https://vk.com");
+        let el= br.find_element(LocatorStrategy::CSS("#index_login_form"));
+        let res = el.get_css_value("color").unwrap().contains("rgba");
+        br.close_browser();
+        assert!(res);
+    }
 }

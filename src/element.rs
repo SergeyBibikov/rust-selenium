@@ -69,7 +69,12 @@ impl Element{
         }else{Ok(resp)}
 
     }
-    pub fn get_css_value(&self,property_name:&str){let url = format!("{}/css/{}",self.element_url,property_name) ;}
+    ///The logic behind returning json is the same as for get_property method
+    pub fn get_css_value(&self,css_property_name:&str)->Result<String,String>{
+        let url = format!("{}/css/{}",self.element_url,css_property_name);
+        let resp = send_and_read_body(Method::GET, &url, vec![], "");
+        if resp.contains("error"){return Err(resp);}else{Ok(resp)}      
+    }
     pub fn get_element_text(&self){let url = format!("{}/text",self.element_url) ;}
     pub fn get_tag_name(&self){let url = format!("{}/name",self.element_url) ;}
     pub fn get_element_rect(&self){let url = format!("{}/rect",self.element_url) ;}
