@@ -1115,4 +1115,13 @@ pub mod tests{
         let len  = a.len();
         assert!(len>2);
     }
+    #[test]
+    fn is_sel() {
+        let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless","--window-size=400,200"]);
+        br.open("https://vk.com");
+        let el= br.find_element(LocatorStrategy::CSS("#ts_input"));
+        let res = el.is_selected().unwrap();
+        br.close_browser();
+        assert!(res==false);
+    }
 }

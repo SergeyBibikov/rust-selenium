@@ -43,24 +43,26 @@ impl Element{
         }
         Ok(result)
     }
-    pub fn is_selected(&self){}
-    pub fn get_attribute(&self){}
-    pub fn get_property(&self){}
-    pub fn get_css_value(&self){}
-    pub fn get_element_text(&self){}
-    pub fn get_tag_name(&self){}
-    pub fn get_element_rect(&self){}
-    pub fn is_enabled(&self){}
-    pub fn get_computed_role(&self){}
-    pub fn get_computed_label(&self){}
-    pub fn click(&self){}
-    pub fn clear_element(&self){}
-    pub fn send_keys(&self){}
-}
-/*
-pub mod el_tests{
-    #[test]
-    fn one() {
-        assert!(true);
+    pub fn is_selected(&self)->Result<bool,String>{
+        let url = format!("{}/selected",self.element_url) ;
+        let resp = send_and_read_body(Method::GET, &url, vec![], "");
+        if resp.contains("error"){return Err(resp);}
+        let map: HashMap<&str,bool> = serde_json::from_str(&resp).unwrap();
+        Ok(*map.get("value").unwrap())
     }
-}*/
+    pub fn get_attribute(&self,attribute_name: &str){
+        let url = format!("{}/attribute/{}",self.element_url,attribute_name);
+        
+    }
+    pub fn get_property(&self,property_name:&str){let url = format!("{}/property/{}",self.element_url,property_name) ;}
+    pub fn get_css_value(&self,property_name:&str){let url = format!("{}/css/{}",self.element_url,property_name) ;}
+    pub fn get_element_text(&self){let url = format!("{}/text",self.element_url) ;}
+    pub fn get_tag_name(&self){let url = format!("{}/name",self.element_url) ;}
+    pub fn get_element_rect(&self){let url = format!("{}/rect",self.element_url) ;}
+    pub fn is_enabled(&self){let url = format!("{}/enabled",self.element_url) ;}
+    pub fn get_computed_role(&self){let url = format!("{}/computedrole",self.element_url) ;}
+    pub fn get_computed_label(&self){let url = format!("{}/computedlabel",self.element_url) ;}
+    pub fn click(&self){let url = format!("{}/click",self.element_url) ;}
+    pub fn clear_element(&self){let url = format!("{}/clear",self.element_url) ;}
+    pub fn send_keys(&self){let url = format!("{}/value",self.element_url) ;}
+}
