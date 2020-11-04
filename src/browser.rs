@@ -217,7 +217,7 @@ impl Browser{
             element_url: format!("{}/element/{}",self.session_url,res.1.clone()),
         })
     }
-    pub fn find_element(&self,loc_strategy:LocStrategy)->Element{
+    pub fn find_element(&self,loc_strategy:LocatorStrategy)->Element{
         let body = body_for_find_element(loc_strategy);
         let resp=send_and_read_body(Method::POST, &self.element_url, cont_length_header(&body), &body);
         let resp = parse_value(&resp);
@@ -229,7 +229,7 @@ impl Browser{
             element_url: format!("{}/element/{}",self.session_url,res.1.clone()),
         }
     }
-    pub fn find_elements(&self,loc_strategy:LocStrategy)->Vec<Element>{
+    pub fn find_elements(&self,loc_strategy:LocatorStrategy)->Vec<Element>{
         let mut result = vec![];
         let body = body_for_find_element(loc_strategy);
         let resp=send_and_read_body(Method::POST, &self.elements_url, cont_length_header(&body), &body);
@@ -419,15 +419,7 @@ impl Browser{
 }
 pub (self) mod utils{
     use super::*;
-    pub (super) fn body_for_find_element(loc_strategy:LocStrategy)->String{
-        match loc_strategy{
-            LocStrategy::CSS(selector)=>format!(r#"{{"using":"css selector","value":"{}"}}"#,selector),
-            LocStrategy::LINKTEXT(selector)=>format!(r#"{{"using":"link text","value":"{}"}}"#,selector),
-            LocStrategy::PARTLINKTEXT(selector)=>format!(r#"{{"using":"partial link text","value":"{}"}}"#,selector),
-            LocStrategy::TAGNAME(selector)=>format!(r#"{{"using":"tag name","value":"{}"}}"#,selector),
-            LocStrategy::XPATH(selector)=>format!(r#"{{"using":"xpath","value":"{}"}}"#,selector)
-        }
-    }
+
     pub (super) fn parse_value(body: &str)->String{
         let resp = body.replace("\n","").replace(" ","").replace(r#"{"value":"#,"");
         let mut resp_vec: Vec<char> = resp.chars().collect();
@@ -514,15 +506,6 @@ pub enum NewWindowType{
     Window
 }
 
-pub enum LocStrategy{
-    CSS(&'static str),
-    LINKTEXT(&'static str),
-    PARTLINKTEXT(&'static str),
-    TAGNAME(&'static str),
-    XPATH(&'static str)
-}
-
-
 #[derive(Serialize,Deserialize,Debug,PartialEq,Clone)]
 pub struct WindowRect{
     pub(self)height:i32,
@@ -530,7 +513,6 @@ pub struct WindowRect{
     pub(self)x:i32,
     pub(self)y:i32
 }
-
 impl WindowRect{
     pub fn new(height:i32,width:i32,x:i32,y:i32)->WindowRect{
         WindowRect{ height, width, x, y}
@@ -912,7 +894,7 @@ pub mod tests{
     fn sw_t_fr_by_el() {
         let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless"]);
         br.open("https://vk.com");
-        let el = br.find_element(LocStrategy::CSS("#quick_login_frame"));
+        let el = br.find_element(LocatorStrategy::CSS("#quick_login_frame"));
         let res = br.switch_to_frame_by_element(el);
         br.close_browser();
         assert_eq!(res,Ok(()));
@@ -923,7 +905,7 @@ pub mod tests{
         {
         let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless"]);
         br.open("https://vk.com");
-        el = br.find_element(LocStrategy::CSS("#ts_input"));
+        el = br.find_element(LocatorStrategy::CSS("#ts_input"));
         br.close_browser();
         }
         let tr =el.element_gr_id.contains("element"); 
@@ -935,7 +917,7 @@ pub mod tests{
         {
         let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless"]);
         br.open("https://bash.im");
-        el = br.find_elements(LocStrategy::CSS("article"));
+        el = br.find_elements(LocatorStrategy::CSS("article"));
         br.close_browser();
         }
         let len = el.len();
@@ -1074,7 +1056,7 @@ pub mod tests{
     fn el_screensh() {
         let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless","--window-size=800,600"]);
         br.open("https://vk.com");
-        let el = br.find_element(LocStrategy::CSS("#ts_input"));
+        let el = br.find_element(LocatorStrategy::CSS("#ts_input"));
         br.take_element_screenshot(&el,"element.png").unwrap();
         br.close_browser();
         let arr=std::fs::read("element.png").unwrap().len();

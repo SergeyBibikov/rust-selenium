@@ -7,6 +7,13 @@ pub (crate) enum Method {
     POST,
     DELETE,
 }
+pub enum LocatorStrategy{
+    CSS(&'static str),
+    LINKTEXT(&'static str),
+    PARTLINKTEXT(&'static str),
+    TAGNAME(&'static str),
+    XPATH(&'static str)
+}
 pub(crate) fn send_request(method: Method, path: &str, headers: Vec<String>, body: &str)->Result<String,Box<dyn Error>> {
     let request = create_req(method, path, headers, body);
     let mut connection = TcpStream::connect("127.0.0.1:4444")?;
@@ -122,6 +129,16 @@ fn read_response_screensh(mut stream: TcpStream) -> Result<Vec<u8>,Box<dyn Error
 }
 pub (crate) fn cont_length_header(content:&str)->Vec<String>{
     vec![format!("Content-Length:{}",content.len()+2)]
+}
+
+pub (crate) fn body_for_find_element(loc_strategy:LocatorStrategy)->String{
+    match loc_strategy{
+        LocatorStrategy::CSS(selector)=>format!(r#"{{"using":"css selector","value":"{}"}}"#,selector),
+        LocatorStrategy::LINKTEXT(selector)=>format!(r#"{{"using":"link text","value":"{}"}}"#,selector),
+        LocatorStrategy::PARTLINKTEXT(selector)=>format!(r#"{{"using":"partial link text","value":"{}"}}"#,selector),
+        LocatorStrategy::TAGNAME(selector)=>format!(r#"{{"using":"tag name","value":"{}"}}"#,selector),
+        LocatorStrategy::XPATH(selector)=>format!(r#"{{"using":"xpath","value":"{}"}}"#,selector)
+    }
 }
 
 //TESTS FOR PRIVATE FUNCTIONS
