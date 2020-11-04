@@ -909,8 +909,8 @@ pub mod tests{
         let el;
         {
         let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless"]);
-        br.open("https://bash.im");
-        el = br.find_elements(LocatorStrategy::CSS("article"));
+        br.open("https://vk.com");
+        el = br.find_elements(LocatorStrategy::CSS("script"));
         br.close_browser();
         }
         let len = el.len();
@@ -1171,5 +1171,23 @@ pub mod tests{
         let res = el.get_tag_name().unwrap().contains("error");
         br.close_browser();
         assert!(!res);
+    }
+    #[test]
+    fn get_el_rect() {
+        let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless","--window-size=400,200"]);
+        br.open("https://vk.com");
+        let el= br.find_element(LocatorStrategy::CSS("#index_login_form"));
+        let res = el.get_element_rect().unwrap();
+        br.close_browser();
+        assert!(res.height==140);
+    }
+    #[test]
+    fn el_is_enabled() {
+        let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless","--window-size=400,200"]);
+        br.open("https://vk.com");
+        let el= br.find_element(LocatorStrategy::CSS("#index_login_form"));
+        let res = el.is_enabled().unwrap();
+        br.close_browser();
+        assert!(res);
     }
 }

@@ -1,5 +1,6 @@
 use super::reqs::*;
 use std::collections::HashMap;
+use serde::{Serialize,Deserialize};
 
 #[derive(Debug)]
 pub struct Element{
@@ -89,11 +90,31 @@ impl Element{
         let map: HashMap<&str,String> = serde_json::from_str(&resp).unwrap();
         Ok((*map.get("value").unwrap()).clone())
     }
-    pub fn get_element_rect(&self){let url = format!("{}/rect",self.element_url) ;}
-    pub fn is_enabled(&self){let url = format!("{}/enabled",self.element_url) ;}
+    pub fn get_element_rect(&self)->Result<ElementRect,String>{
+        let url = format!("{}/rect",self.element_url);
+        let resp = send_and_read_body(Method::GET, &url, vec![], "");
+        if resp.contains("error"){return Err(resp);}
+        let map: HashMap<&str,ElementRect> = serde_json::from_str(&resp).unwrap();
+        Ok((*map.get("value").unwrap()).clone())
+    }
+    pub fn is_enabled(&self)->Result<bool,String>{
+        let url = format!("{}/enabled",self.element_url);
+        let resp = send_and_read_body(Method::GET, &url, vec![], "");
+        if resp.contains("error"){return Err(resp);}
+        let map: HashMap<&str,bool> = serde_json::from_str(&resp).unwrap();
+        Ok(*map.get("value").unwrap())
+    }
+    //Поправить парсинг ответа для find elements!
     pub fn get_computed_role(&self){let url = format!("{}/computedrole",self.element_url) ;}
     pub fn get_computed_label(&self){let url = format!("{}/computedlabel",self.element_url) ;}
     pub fn click(&self){let url = format!("{}/click",self.element_url) ;}
     pub fn clear_element(&self){let url = format!("{}/clear",self.element_url) ;}
     pub fn send_keys(&self){let url = format!("{}/value",self.element_url) ;}
+}
+#[derive(Deserialize,Serialize,Clone,Debug)]
+pub struct ElementRect{
+    pub(crate)height:i32,
+    pub(crate)width:i32,
+    pub(crate)x:i32,
+    pub(crate)y:i32,
 }
