@@ -1105,4 +1105,14 @@ pub mod tests{
         br.close_browser();
         assert!(a.element_gr_id.contains("element"));
     }
+    #[test]
+    fn sub_els() {
+        let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless","--window-size=400,200"]);
+        br.open("https://bash.im");
+        let par_el= br.find_element(LocatorStrategy::CSS("section.quotes"));
+        let a = par_el.find_elements_from_self(LocatorStrategy::CSS(".quote")).unwrap();
+        br.close_browser();
+        let len  = a.len();
+        assert!(len>2);
+    }
 }

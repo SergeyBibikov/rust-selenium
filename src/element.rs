@@ -23,9 +23,26 @@ impl Element{
             element_url: format!("{}/element/{}",el_url,res.1.clone()),
         })
     }
-    // pub fn find_elements_from_self(&self,locator:LocatorStrategy)->Result<Vec<Element>,String>{
-
-    // }
+    pub fn find_elements_from_self(&self,locator:LocatorStrategy)->Result<Vec<Element>,String>{
+        let mut result = vec![];
+        let url = format!("{}/elements",self.element_url);
+        let body = body_for_find_element(locator);
+        let resp=send_and_read_body(Method::POST, &url, cont_length_header(&body), &body);
+        if resp.contains("error"){return Err(resp);}
+        let resp = parse_value(&resp);
+        let map: Vec<HashMap<String,String>> = serde_json::from_str(&resp).unwrap();
+        let element_ur = self.element_url.split("/element").next().unwrap();
+        for i in map{
+            let element_ur = element_ur.clone();
+            let res = i.iter().next().unwrap();
+            result.push(Element{
+            element_gr_id:res.0.clone(),
+            element_id:res.1.clone(),
+            element_url:format!("{}/element/{}",element_ur,res.1.clone()),
+            });
+        }
+        Ok(result)
+    }
     pub fn is_selected(&self){}
     pub fn get_attribute(&self){}
     pub fn get_property(&self){}
