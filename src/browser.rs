@@ -205,6 +205,18 @@ impl Browser{
         }
         Ok(())
     }
+    pub fn get_active_element(&self)->Result<Element,String>{
+        let resp = send_and_read_body(Method::GET, &self.element_active_url, vec![], "");
+        if resp.contains("error"){return Err(resp);}
+        let resp = parse_value(&resp);
+        let map: HashMap<String,String> = serde_json::from_str(&resp).unwrap();
+        let res = map.iter().next().unwrap();
+        Ok(Element{
+            element_gr_id:res.0.clone(),
+            element_id:res.1.clone(),
+            element_url: format!("{}/element",self.session_url),
+        })
+    }
     pub fn find_element(&self,loc_strategy:LocStrategy)->Element{
         let body = body_for_find_element(loc_strategy);
         let resp=send_and_read_body(Method::POST, &self.element_url, cont_length_header(&body), &body);
@@ -739,6 +751,7 @@ pub enum Orientation{
 pub mod tests{
 
     use super::*;
+    use super::Element;
     use std::env::*;
     #[test]
     fn create_session() {
@@ -1106,5 +1119,12 @@ pub mod tests{
         br.close_browser();
         assert!(resp&&resp2);
     }
-
+    #[test]
+    fn active_el() {
+        let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless"]);
+        br.open("https://vk.com");
+        let a = br.get_active_element().unwrap();
+        br.close_browser();
+        assert!(a.element_gr_id.contains("element"));
+    }
 }
