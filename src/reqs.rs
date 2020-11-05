@@ -19,8 +19,9 @@ pub(crate) fn send_request(method: Method, path: &str, headers: Vec<String>, bod
     let mut connection = TcpStream::connect("127.0.0.1:4444")?;
     connection.write(request.as_bytes())?;
     connection.flush()?;
-    Ok(read_response(&connection)?)
-    
+    let buf = read_response_to_vec_u8(connection).unwrap();
+    let st = String::from_utf8(buf).unwrap();
+    Ok(st)    
 }
 pub(crate) fn send_request_screensh(method: Method, path: &str, headers: Vec<String>, body: &str)->Result<Vec<u8>,Box<dyn Error>> {
     let request = create_req(method, path, headers, body);
@@ -73,6 +74,45 @@ fn read_response(mut stream: &TcpStream) -> Result<String,Box<dyn Error>> {
     let response = String::from_utf8(buff)?;
 
     Ok(response)
+}
+fn read_response_to_vec_u8(mut stream: TcpStream)->Result<Vec<u8>,Box<dyn Error>>{
+    use std::thread;
+    use std::sync::mpsc;
+    let mut result_buf = vec![];
+    let mut temp_buf = vec![];
+    let (sender,receiver) = mpsc::channel();
+    std::thread::spawn(move || {
+        loop{
+            let mut b = vec![0;262144];
+            let bytes_num = stream.peek(&mut b).unwrap_or(0);
+            let mut buff = vec![0;bytes_num];
+            let _ = stream.read(&mut buff);
+            let _ = sender.send(buff);
+        }
+    });    
+    
+    let mut counter = 0;
+    let mut started = false;
+    loop{
+        if counter ==3 {
+            break;
+        }
+        if let Ok(a) = receiver.try_recv(){
+            temp_buf.push(a);
+            started = true;
+        }else if !started {
+            continue;
+        }else {
+            thread::sleep(std::time::Duration::from_millis(10));
+            counter+=1;}
+    }    
+    
+    for v in temp_buf{
+        for b in v{
+            result_buf.push(b);
+        }
+    }
+    Ok(result_buf)
 }
 fn read_response_screensh(mut stream: TcpStream) -> Result<Vec<u8>,Box<dyn Error>> {
     use std::thread;

@@ -146,8 +146,6 @@ impl Browser{
     pub fn get_window_handle(&self)->String{
         let resp = send_and_read_body(Method::GET, &self.window_url, vec![], "");
         parse_value(&resp).replace("\"","")
-        /*let map:HashMap<&str,&str> = serde_json::from_str(&resp).unwrap();
-        (map.get("value").unwrap()).to_string().clone()*/
     }
     pub fn get_window_handles(&self)->Vec<String>{
        let resp = send_and_read_body(Method::GET, &self.window_handles_url, vec![], "");
@@ -219,7 +217,7 @@ impl Browser{
     }
     pub fn find_element(&self,loc_strategy:LocatorStrategy)->Element{
         let body = body_for_find_element(loc_strategy);
-        let resp=send_and_read_body(Method::POST, &self.element_url, cont_length_header(&body), &body);
+        let resp = send_and_read_body(Method::POST, &self.element_url, cont_length_header(&body), &body);
         let resp = parse_value(&resp);
         let map: HashMap<String,String> = serde_json::from_str(&resp).unwrap();
         let res = map.iter().next().unwrap();
@@ -910,7 +908,7 @@ pub mod tests{
         {
         let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless"]);
         br.open("https://vk.com");
-        el = br.find_elements(LocatorStrategy::CSS("script"));
+        el = br.find_elements(LocatorStrategy::CSS("div"));
         br.close_browser();
         }
         let len = el.len();
@@ -1020,10 +1018,8 @@ pub mod tests{
     fn a_del_all_cook() {
         let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless"]);
         br.open("https://vk.com");
-        //std::thread::sleep_ms(200);
         br.delete_all_cookies().unwrap();
         let cook = br.get_all_cookies();
-        //dbg!(&cook);
         br.close_browser();
         assert_eq!(cook.len(),0);
     }
