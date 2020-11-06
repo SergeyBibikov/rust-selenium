@@ -67,14 +67,6 @@ fn create_req(method: Method, path: &str, headers: Vec<String>, body: &str) -> S
     request
 }
 
-fn read_response(mut stream: &TcpStream) -> Result<String,Box<dyn Error>> {
-    let bytes_num = stream.peek(&mut vec![0;32768]).unwrap();
-    let mut buff = vec![0;bytes_num];
-    stream.read(&mut buff)?;
-    let response = String::from_utf8(buff)?;
-
-    Ok(response)
-}
 fn read_response_to_vec_u8(mut stream: TcpStream)->Result<Vec<u8>,Box<dyn Error>>{
     use std::thread;
     use std::sync::mpsc;
