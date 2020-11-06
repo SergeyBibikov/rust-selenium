@@ -414,6 +414,11 @@ impl Browser{
         if resp.contains("error"){return Err(resp);}
         Ok(())
     }
+    pub fn release_actions(&self)->Result<(),String>{
+        let resp = send_and_read_body(Method::DELETE, &self.actions_url, vec![], "");
+        if resp.contains("error"){return Err(resp);}
+        Ok(())
+    }
 }
 pub (self) mod utils{
     use super::*;
@@ -1223,5 +1228,13 @@ pub mod tests{
         let _ = el.send_keys("Sup!");
         el.clear_element().unwrap();
         br.close_browser();
+    }
+    #[test]
+    fn rel_actions() {
+        let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless","--window-size=400,200"]);
+        let res1 = br.release_actions();
+        br.close_browser();
+        let res2 = br.release_actions();
+        assert!(res1.is_ok()&&res2.is_err());
     }
 }
