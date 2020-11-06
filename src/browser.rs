@@ -1215,4 +1215,13 @@ pub mod tests{
         el.send_keys("Sup!").unwrap();
         br.close_browser();
     }
+    #[test]
+    fn el_clear() {
+        let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless","--window-size=400,200"]);
+        br.open("https://vk.com");
+        let el= br.find_element(LocatorStrategy::CSS("#ts_input"));
+        let _ = el.send_keys("Sup!");
+        el.clear_element().unwrap();
+        br.close_browser();
+    }
 }

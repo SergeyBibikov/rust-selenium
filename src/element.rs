@@ -128,8 +128,12 @@ impl Element{
         Ok(())
 
     }
-    pub fn clear_element(&self){
+    pub fn clear_element(&self)->Result<(),String>{
+        let body = r#"{}"#;
         let url = format!("{}/clear",self.element_url);
+        let resp = send_and_read_body(Method::POST, &url, cont_length_header(&body), &body);
+        if resp.contains("error"){return Err(resp);}
+        Ok(())
     }
     pub fn send_keys(&self,message:&str)->Result<(),String>{
         let body = format!(r#"{{"text":"{}"}}"#,message);
