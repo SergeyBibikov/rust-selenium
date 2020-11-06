@@ -1207,4 +1207,12 @@ pub mod tests{
         br.close_browser();
         assert_eq!(res,Ok(()))
     }
+    #[test]
+    fn el_send_k() {
+        let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless","--window-size=400,200"]);
+        br.open("https://vk.com");
+        let el= br.find_element(LocatorStrategy::CSS("#ts_input"));
+        el.send_keys("Sup!").unwrap();
+        br.close_browser();
+    }
 }

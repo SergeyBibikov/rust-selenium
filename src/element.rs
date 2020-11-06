@@ -131,8 +131,13 @@ impl Element{
     pub fn clear_element(&self){
         let url = format!("{}/clear",self.element_url);
     }
-    pub fn send_keys(&self){
+    pub fn send_keys(&self,message:&str)->Result<(),String>{
+        let body = format!(r#"{{"text":"{}"}}"#,message);
         let url = format!("{}/value",self.element_url);
+        let resp = send_and_read_body(Method::POST, &url, cont_length_header(&body), &body);
+        if resp.contains("error"){return Err(resp);}
+        Ok(())
+
     }
 }
 #[derive(Deserialize,Serialize,Clone,Debug)]
