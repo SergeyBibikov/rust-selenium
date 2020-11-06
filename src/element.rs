@@ -104,9 +104,22 @@ impl Element{
         let map: HashMap<&str,bool> = serde_json::from_str(&resp).unwrap();
         Ok(*map.get("value").unwrap())
     }
-    //Поправить парсинг ответа для find elements!
-    pub fn get_computed_role(&self){let url = format!("{}/computedrole",self.element_url) ;}
-    pub fn get_computed_label(&self){let url = format!("{}/computedlabel",self.element_url) ;}
+    ///As of 06.11.2020 computed role and computed label are not implemented
+    /// by chrome and geckodrivers, so this method will only be returning errors for now
+    pub fn get_computed_role(&self)->Result<String,String>{
+        let url = format!("{}/computedrole",self.element_url);
+        let resp = send_and_read_body(Method::GET, &url, vec![], "");
+        if resp.contains("error"){return Err(resp);}
+        let map: HashMap<&str,String> = serde_json::from_str(&resp).unwrap();
+        Ok((*map.get("value").unwrap()).clone())
+    }
+    pub fn get_computed_label(&self)->Result<String,String>{
+        let url = format!("{}/computedlabel",self.element_url);
+        let resp = send_and_read_body(Method::GET, &url, vec![], "");
+        if resp.contains("error"){return Err(resp);}
+        let map: HashMap<&str,String> = serde_json::from_str(&resp).unwrap();
+        Ok((*map.get("value").unwrap()).clone())
+    }
     pub fn click(&self){let url = format!("{}/click",self.element_url) ;}
     pub fn clear_element(&self){let url = format!("{}/clear",self.element_url) ;}
     pub fn send_keys(&self){let url = format!("{}/value",self.element_url) ;}
