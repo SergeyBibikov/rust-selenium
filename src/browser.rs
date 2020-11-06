@@ -1198,4 +1198,13 @@ pub mod tests{
         br.close_browser();
         assert!(res.is_err()&&res2.is_err());
     }
+    #[test]
+    fn click_test() {
+        let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless","--window-size=400,200"]);
+        br.open("https://vk.com");
+        let el= br.find_element(LocatorStrategy::CSS("#index_login_form"));
+        let res = el.click();
+        br.close_browser();
+        assert_eq!(res,Ok(()))
+    }
 }

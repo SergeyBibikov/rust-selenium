@@ -120,9 +120,20 @@ impl Element{
         let map: HashMap<&str,String> = serde_json::from_str(&resp).unwrap();
         Ok((*map.get("value").unwrap()).clone())
     }
-    pub fn click(&self){let url = format!("{}/click",self.element_url) ;}
-    pub fn clear_element(&self){let url = format!("{}/clear",self.element_url) ;}
-    pub fn send_keys(&self){let url = format!("{}/value",self.element_url) ;}
+    pub fn click(&self)->Result<(),String>{
+        let body = r#"{}"#;
+        let url = format!("{}/click",self.element_url);
+        let resp = send_and_read_body(Method::POST, &url, cont_length_header(&body), &body);
+        if resp.contains("error"){return Err(resp);}
+        Ok(())
+
+    }
+    pub fn clear_element(&self){
+        let url = format!("{}/clear",self.element_url);
+    }
+    pub fn send_keys(&self){
+        let url = format!("{}/value",self.element_url);
+    }
 }
 #[derive(Deserialize,Serialize,Clone,Debug)]
 pub struct ElementRect{
