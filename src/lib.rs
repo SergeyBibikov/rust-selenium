@@ -4,3 +4,4 @@ mod reqs;
 mod browser;
 mod element;
 mod actions;
+mod specialkey;

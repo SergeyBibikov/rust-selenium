@@ -6,6 +6,7 @@ use std::collections::HashMap;
 use self::utils::*;
 use super::element::*;
 use super::actions::*;
+use super::specialkey::*;
 
 #[derive(Serialize,Deserialize)]
 struct Value{
@@ -1253,6 +1254,22 @@ pub mod tests{
         actions.ctrl_a();
         let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless","--window-size=400,200"]);
         br.open("https:vk.com/");
+        let res = br.perform_actions(actions);
+        br.close_browser();
+        assert!(res.is_ok());
+    }
+    #[test]
+    fn per_f_ac_with_keys() {
+        let mut actions = Actions::new();
+        let mut actions_keys = ActionsKeys::new();
+        actions_keys.press_special_key(SpecialKey::ShiftLeft);
+        actions_keys.press_key("a");
+        actions_keys.release_special_key(SpecialKey::ShiftLeft);
+        actions_keys.press_key("b");
+        actions.add_key_actions(actions_keys);
+        let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless","--window-size=1000,500"]);
+        br.open("https:vk.com/");
+        br.find_element(LocatorStrategy::CSS("#ts_input")).click().unwrap();
         let res = br.perform_actions(actions);
         br.close_browser();
         assert!(res.is_ok());
