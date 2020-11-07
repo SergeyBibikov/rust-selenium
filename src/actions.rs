@@ -214,6 +214,11 @@ impl ActionsMouse{
         let val = serde_json::from_str(&json).unwrap();
         self.actions.push(val);
      }
+     pub fn cancel_action(&mut self){
+        let json =r#"{"type":"pointerCancel"}"#;
+        let val = serde_json::from_str(&json).unwrap();
+        self.actions.push(val);
+     }
 
 }
 fn mouse_button_to_string(button:MouseButton)->u8{
@@ -229,7 +234,7 @@ fn mouse_button_to_string(button:MouseButton)->u8{
 pub mod actions_tests{
     use super::*;
     #[test]
-    //#[ignore]
+    #[ignore]
     fn dummy_test() {
         let mut ac = Actions::new();
         let mut ma = ActionsMouse::new();
