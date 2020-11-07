@@ -5,6 +5,7 @@ use super::reqs::*;
 use std::collections::HashMap;
 use self::utils::*;
 use super::element::*;
+use super::actions::*;
 
 #[derive(Serialize,Deserialize)]
 struct Value{
@@ -411,6 +412,14 @@ impl Browser{
     pub fn send_alert_text(&self,text:&str)->Result<(),String>{
         let body =format!(r#"{{"text":{}}}"#,text) ;
         let resp = send_and_read_body(Method::POST, &self.alert_dismiss_url, cont_length_header(&body), &body);
+        if resp.contains("error"){return Err(resp);}
+        Ok(())
+    }
+    pub fn perform_actions(&self,actions:Actions)->Result<(),String>{
+        let mut actions = actions;
+        actions.set_ids();
+        let body = serde_json::to_string(&actions).unwrap();
+        let resp = send_and_read_body(Method::POST, &self.actions_url, cont_length_header(&body), &body);
         if resp.contains("error"){return Err(resp);}
         Ok(())
     }
@@ -1236,5 +1245,16 @@ pub mod tests{
         br.close_browser();
         let res2 = br.release_actions();
         assert!(res1.is_ok()&&res2.is_err());
+    }
+    #[test]
+    fn perf_ac() {
+        let mut actions = Actions::new();
+        actions.release_focus();
+        actions.ctrl_a();
+        let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless","--window-size=400,200"]);
+        br.open("https:vk.com/");
+        let res = br.perform_actions(actions);
+        br.close_browser();
+        assert!(res.is_ok());
     }
 }
