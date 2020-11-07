@@ -1,5 +1,5 @@
 use serde::{Serialize,Deserialize};
-use super::specialkey::SpecialKey;
+use super::specialkey::*;
 
 #[derive(Serialize,Deserialize,Debug)]
 pub struct Actions{
@@ -59,7 +59,18 @@ impl Actions{
         let val = serde_json::from_str(&temp_string).unwrap();
         self.actions.push(val);
     }
+    pub fn add_mouse_actions(&mut self,mouse_actions:ActionsMouse){
+        let temp_val = serde_json::to_string(&mouse_actions).unwrap();
+        let mut arr:Vec<u8> = temp_val.bytes().collect();
+        arr.remove(0);
+        arr.pop();
+        let temp_val = String::from_utf8(arr).unwrap();
+        let temp_string = format!(r#"{{"type":"pointer",{}}}"#,temp_val);
+        let val = serde_json::from_str(&temp_string).unwrap();
+        self.actions.push(val);
+    }
 }
+
 #[derive(Serialize,Deserialize,Debug)]
 pub struct ActionsKeys{
     actions:Vec<serde_json::Value>,
@@ -91,86 +102,141 @@ impl ActionsKeys{
         let json = format!(r#"{{"type":"keyUp","value":"{}"}}"#,key);
         let val = serde_json::from_str(&json).unwrap();
         self.actions.push(val);
-    }   
+    }
+    pub fn pause(&mut self,duration:u32){
+        let json = format!(r#"{{"type":"pause","duration":{}}}"#,duration);
+        let val = serde_json::from_str(&json).unwrap();
+        self.actions.push(val);
+    }
 }
 fn spec_key_to_string(spec_key:SpecialKey)->&'static str{
-    match spec_key{
-        SpecialKey::ShiftLeft=>r"\uE008",
-        SpecialKey::ShiftRight=>r"\uE050",
-        SpecialKey::LeftCtrl=>r"\uE009",
-        SpecialKey::RightCtrl=>r"\uE051",
-        SpecialKey::F1=>r"\uE031",
-        SpecialKey::F2=>r"\uE032",
-        SpecialKey::F3=>r"\uE033",
-        SpecialKey::F4=>r"\uE034",
-        SpecialKey::F5=>r"\uE035",
-        SpecialKey::F6=>r"\uE036",
-        SpecialKey::F7=>r"\uE037",
-        SpecialKey::F8=>r"\uE038",
-        SpecialKey::F9=>r"\uE039",
-        SpecialKey::F10=>r"\uE03A",
-        SpecialKey::F11=>r"\uE03B",
-        SpecialKey::F12=>r"\uE03C",
-        SpecialKey::EndOne=>r"\uE010",
-        SpecialKey::HomeOne=>r"\uE011",
-        SpecialKey::EndTwo=>r"\uE056",
-        SpecialKey::HomeTwo=>r"\uE057",
-        SpecialKey::PageUpOne=>r"\uE00E",
-        SpecialKey::PageDownOne=>r"\uE00F",
-        SpecialKey::PageUpTwo=>r"\uE054",
-        SpecialKey::PageDownTwo=>r"\uE055",
-        SpecialKey::OSLeft=>r"\uE03D",
-        SpecialKey::OSRight=>r"\uE053",
-        SpecialKey::ZenkakuHankaku=>r"\uE040",
-        SpecialKey::AltLeft=>r"\uE00A",
-        SpecialKey::AltRight=>r"AltRight",
-        SpecialKey::ArrowLeftOne=>r"\uE012",
-        SpecialKey::ArrowRightOne=>r"\uE014",
-        SpecialKey::ArrowUpOne=>r"\uE013",
-        SpecialKey::ArrowDownOne=>r"\uE015",
-        SpecialKey::ArrowLeftTwo=>r"\uE058",
-        SpecialKey::ArrowRightTwo=>r"\uE05A",
-        SpecialKey::ArrowUpTwo=>r"\uE059",
-        SpecialKey::ArrowDownTwo=>r"\uE05B",
-        SpecialKey::InsertOne=>r"\uE016",
-        SpecialKey::InsertTwo=>r"\uE05C",
-        SpecialKey::DeleteOne=>r"\uE017",
-        SpecialKey::DeleteTwo=>r"\uE05D",
-        SpecialKey::Cancel=>r"\uE001",
-        SpecialKey::Help=>r"\uE002",
-        SpecialKey::Tab=>r"\uE004",
-        SpecialKey::Backspace=>r"\uE003",
-        SpecialKey::Clear=>r"\uE005",
-        SpecialKey::Return=>r"\uE006",
-        SpecialKey::Enter=>r"\uE006",
-        SpecialKey::Pause=>r"\uE00B",
-        SpecialKey::Escape=>r"\uE00C",
-        SpecialKey::Space=>r"\uE00D",
-        SpecialKey::Numpad0=>r"\uE05C",
-        SpecialKey::Numpad1=>r"\uE056",
-        SpecialKey::Numpad2=>r"\uE05B",
-        SpecialKey::Numpad3=>r"\uE055",
-        SpecialKey::Numpad4=>r"\uE058",
-        SpecialKey::Numpad5=>r"\uE01F",
-        SpecialKey::Numpad6=>r"\uE05A",
-        SpecialKey::Numpad7=>r"\uE057",
-        SpecialKey::Numpad8=>r"\uE059",
-        SpecialKey::Numpad9=>r"\uE054",
-        SpecialKey::NumpadAdd=>r"\uE025",
-        SpecialKey::NumpadComma=>r"\uE026",
-        SpecialKey::NumpadDecimal=>r"\uE05D",
-        SpecialKey::NumpadDivide=>r"\uE029",
-        SpecialKey::NumpadEnter=>r"\uE007",
-        SpecialKey::NumpadMultiply=>r"\uE024",
-        SpecialKey::NumpadSubtract=>r"\uE027",
+        match spec_key{
+            SpecialKey::ShiftLeft=>r"\uE008",
+            SpecialKey::ShiftRight=>r"\uE050",
+            SpecialKey::LeftCtrl=>r"\uE009",
+            SpecialKey::RightCtrl=>r"\uE051",
+            SpecialKey::F1=>r"\uE031",
+            SpecialKey::F2=>r"\uE032",
+            SpecialKey::F3=>r"\uE033",
+            SpecialKey::F4=>r"\uE034",
+            SpecialKey::F5=>r"\uE035",
+            SpecialKey::F6=>r"\uE036",
+            SpecialKey::F7=>r"\uE037",
+            SpecialKey::F8=>r"\uE038",
+            SpecialKey::F9=>r"\uE039",
+            SpecialKey::F10=>r"\uE03A",
+            SpecialKey::F11=>r"\uE03B",
+            SpecialKey::F12=>r"\uE03C",
+            SpecialKey::EndOne=>r"\uE010",
+            SpecialKey::HomeOne=>r"\uE011",
+            SpecialKey::EndTwo=>r"\uE056",
+            SpecialKey::HomeTwo=>r"\uE057",
+            SpecialKey::PageUpOne=>r"\uE00E",
+            SpecialKey::PageDownOne=>r"\uE00F",
+            SpecialKey::PageUpTwo=>r"\uE054",
+            SpecialKey::PageDownTwo=>r"\uE055",
+            SpecialKey::OSLeft=>r"\uE03D",
+            SpecialKey::OSRight=>r"\uE053",
+            SpecialKey::ZenkakuHankaku=>r"\uE040",
+            SpecialKey::AltLeft=>r"\uE00A",
+            SpecialKey::AltRight=>r"AltRight",
+            SpecialKey::ArrowLeftOne=>r"\uE012",
+            SpecialKey::ArrowRightOne=>r"\uE014",
+            SpecialKey::ArrowUpOne=>r"\uE013",
+            SpecialKey::ArrowDownOne=>r"\uE015",
+            SpecialKey::ArrowLeftTwo=>r"\uE058",
+            SpecialKey::ArrowRightTwo=>r"\uE05A",
+            SpecialKey::ArrowUpTwo=>r"\uE059",
+            SpecialKey::ArrowDownTwo=>r"\uE05B",
+            SpecialKey::InsertOne=>r"\uE016",
+            SpecialKey::InsertTwo=>r"\uE05C",
+            SpecialKey::DeleteOne=>r"\uE017",
+            SpecialKey::DeleteTwo=>r"\uE05D",
+            SpecialKey::Cancel=>r"\uE001",
+            SpecialKey::Help=>r"\uE002",
+            SpecialKey::Tab=>r"\uE004",
+            SpecialKey::Backspace=>r"\uE003",
+            SpecialKey::Clear=>r"\uE005",
+            SpecialKey::Return=>r"\uE006",
+            SpecialKey::Enter=>r"\uE006",
+            SpecialKey::Pause=>r"\uE00B",
+            SpecialKey::Escape=>r"\uE00C",
+            SpecialKey::Space=>r"\uE00D",
+            SpecialKey::Numpad0=>r"\uE05C",
+            SpecialKey::Numpad1=>r"\uE056",
+            SpecialKey::Numpad2=>r"\uE05B",
+            SpecialKey::Numpad3=>r"\uE055",
+            SpecialKey::Numpad4=>r"\uE058",
+            SpecialKey::Numpad5=>r"\uE01F",
+            SpecialKey::Numpad6=>r"\uE05A",
+            SpecialKey::Numpad7=>r"\uE057",
+            SpecialKey::Numpad8=>r"\uE059",
+            SpecialKey::Numpad9=>r"\uE054",
+            SpecialKey::NumpadAdd=>r"\uE025",
+            SpecialKey::NumpadComma=>r"\uE026",
+            SpecialKey::NumpadDecimal=>r"\uE05D",
+            SpecialKey::NumpadDivide=>r"\uE029",
+            SpecialKey::NumpadEnter=>r"\uE007",
+            SpecialKey::NumpadMultiply=>r"\uE024",
+            SpecialKey::NumpadSubtract=>r"\uE027",
+        }
+}
+
+#[derive(Serialize,Deserialize,Debug)]
+pub struct ActionsMouse{
+    actions:Vec<serde_json::Value>,
+}
+impl ActionsMouse{
+    pub fn new()->ActionsMouse{
+        ActionsMouse{
+            actions: vec![],
+        }
+    }
+    pub fn pause(&mut self,duration:u32){
+        let json = format!(r#"{{"type":"pause","duration":{}}}"#,duration);
+        let val = serde_json::from_str(&json).unwrap();
+        self.actions.push(val);
+    }
+    pub fn press_mouse_button(&mut self,button: MouseButton){
+        let key = mouse_button_to_string(button);
+        let json = format!(r#"{{"type":"pointerDown","button":{}}}"#,key);
+        let val = serde_json::from_str(&json).unwrap();
+        self.actions.push(val);
+     }
+     pub fn release_mouse_button(&mut self,button: MouseButton){
+        let key = mouse_button_to_string(button);
+        let json = format!(r#"{{"type":"pointerUp","button":{}}}"#,key);
+        let val = serde_json::from_str(&json).unwrap();
+        self.actions.push(val);
+     }
+     pub fn move_mouse_to_point(&mut self, duration: u32, x: u32,y: u32){
+        let json = format!(r#"{{"type":"pointerMove","duration":{},"origin":"viewport","x":{},"y":{}}}"#,duration,x,y);
+        let val = serde_json::from_str(&json).unwrap();
+        self.actions.push(val);
+     }
+
+}
+fn mouse_button_to_string(button:MouseButton)->u8{
+    match button{
+        MouseButton::Left=>0,
+        MouseButton::Middle=>1,
+        MouseButton::Right=>2,
+        MouseButton::X1Back=>3,
+        MouseButton::X2Forward=>4
     }
 }
 
 pub mod actions_tests{
     use super::*;
     #[test]
-    #[ignore]
+    //#[ignore]
     fn dummy_test() {
-        
+        let mut ac = Actions::new();
+        let mut ma = ActionsMouse::new();
+        ma.press_mouse_button(MouseButton::Left);
+        ma.pause(5);
+        ma.press_mouse_button(MouseButton::Right);
+        ac.add_mouse_actions(ma);
+        dbg!(&ac);
         }
 }

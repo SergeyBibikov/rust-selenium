@@ -424,6 +424,8 @@ impl Browser{
         if resp.contains("error"){return Err(resp);}
         Ok(())
     }
+    ///While the key actions are performed just after calling the perform_actions method,
+    ///for instance, mouse actions are performed only after callinf the release_actions method
     pub fn release_actions(&self)->Result<(),String>{
         let resp = send_and_read_body(Method::DELETE, &self.actions_url, vec![], "");
         if resp.contains("error"){return Err(resp);}
@@ -657,8 +659,7 @@ impl PrintSettings{
     pub fn set_shrink_to_fit(&mut self,shr_to_fit:bool){self.shrinkToFit = shr_to_fit;}
     pub fn set_pages(&mut self,pages:Vec<u32>){self.pages=pages;}
 }
-/*TODO !!!
-Методы для создания и настройки PrintSettings, добавить валидации на поля*/
+
 impl Default for PrintSettings{
     fn default()->Self{
         PrintSettings{
@@ -1273,5 +1274,44 @@ pub mod tests{
         let res = br.perform_actions(actions);
         br.close_browser();
         assert!(res.is_ok());
+    }
+    #[test]
+    fn perf_mouse_act() {
+        let mut actions = Actions::new();
+        let mut actions_keys = ActionsMouse::new();
+        actions_keys.press_mouse_button(MouseButton::Left);
+        actions_keys.pause(10);
+        actions_keys.move_mouse_to_point(3,200,300);
+        actions_keys.press_mouse_button(MouseButton::Right);
+        actions.add_mouse_actions(actions_keys);
+        let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless","--window-size=1000,500"]);
+        br.open("https:vk.com/");
+        let res = br.perform_actions(actions);
+        let res2 = br.release_actions();
+        br.close_browser();
+        assert!(res.is_ok()&&res2.is_ok());
+    }
+    #[test]
+    fn keys_and_mouse_acts() {
+        let mut actions = Actions::new();
+        let mut keys = ActionsKeys::new();
+        let mut mouse = ActionsMouse::new();
+        keys.press_special_key(SpecialKey::ShiftLeft);
+        keys.press_key("a");
+        keys.release_special_key(SpecialKey::ShiftLeft);
+        keys.press_key("b");
+        mouse.pause(0);
+        mouse.pause(0);
+        mouse.press_mouse_button(MouseButton::Left);
+        mouse.move_mouse_to_point(3,200,300);
+        mouse.press_mouse_button(MouseButton::Right);
+        actions.add_key_actions(keys);
+        actions.add_mouse_actions(mouse);
+        let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless","--window-size=1000,500"]);
+        br.open("https:vk.com/");
+        let res = br.perform_actions(actions);
+        let res2 = br.release_actions();
+        br.close_browser();
+        assert!(res.is_ok()&&res2.is_ok());       
     }
 }

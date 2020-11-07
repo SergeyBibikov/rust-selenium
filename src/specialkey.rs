@@ -70,3 +70,10 @@ pub enum SpecialKey{
     NumpadMultiply,
     NumpadSubtract,
 }
+pub enum MouseButton{
+    Left,
+    Middle,
+    Right,
+    X1Back,
+    X2Forward
+}
