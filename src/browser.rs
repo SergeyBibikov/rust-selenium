@@ -1314,4 +1314,16 @@ pub mod tests{
         br.close_browser();
         assert!(res.is_ok()&&res2.is_ok());       
     }
+    #[test]
+    fn wheel_ac() {
+        let mut actions = Actions::new();
+        let mut wheel = ActionsWheel::new();
+        wheel.scroll(0, 0, 100, 100).scroll(0, 0, 0, 1000);
+        let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless","--window-size=600,400"]);
+        br.open("https://yandex.ru/");
+        actions.add_wheel_actions(wheel);
+        let res = br.perform_actions(actions);
+        br.close_browser();
+        assert!(res.is_ok());
+    }
 }

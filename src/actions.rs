@@ -69,6 +69,16 @@ impl Actions{
         let val = serde_json::from_str(&temp_string).unwrap();
         self.actions.push(val);
     }
+    pub fn add_wheel_actions(&mut self,wheel_actions:ActionsWheel){
+        let temp_val = serde_json::to_string(&wheel_actions).unwrap();
+        let mut arr:Vec<u8> = temp_val.bytes().collect();
+        arr.remove(0);
+        arr.pop();
+        let temp_val = String::from_utf8(arr).unwrap();
+        let temp_string = format!(r#"{{"type":"wheel",{}}}"#,temp_val);
+        let val = serde_json::from_str(&temp_string).unwrap();
+        self.actions.push(val);
+    }
 }
 
 #[derive(Serialize,Deserialize,Debug)]
@@ -202,23 +212,23 @@ impl ActionsMouse{
         let json = format!(r#"{{"type":"pointerDown","button":{}}}"#,key);
         let val = serde_json::from_str(&json).unwrap();
         self.actions.push(val);
-     }
-     pub fn release_mouse_button(&mut self,button: MouseButton){
+    }
+    pub fn release_mouse_button(&mut self,button: MouseButton){
         let key = mouse_button_to_string(button);
         let json = format!(r#"{{"type":"pointerUp","button":{}}}"#,key);
         let val = serde_json::from_str(&json).unwrap();
         self.actions.push(val);
-     }
-     pub fn move_mouse_to_point(&mut self, duration: u32, x: u32,y: u32){
+    }
+    pub fn move_mouse_to_point(&mut self, duration: u32, x: i32,y: i32){
         let json = format!(r#"{{"type":"pointerMove","duration":{},"origin":"viewport","x":{},"y":{}}}"#,duration,x,y);
         let val = serde_json::from_str(&json).unwrap();
         self.actions.push(val);
-     }
-     pub fn cancel_action(&mut self){
+    }
+    pub fn cancel_action(&mut self){
         let json =r#"{"type":"pointerCancel"}"#;
         let val = serde_json::from_str(&json).unwrap();
         self.actions.push(val);
-     }
+    }
 
 }
 fn mouse_button_to_string(button:MouseButton)->u8{
@@ -228,6 +238,37 @@ fn mouse_button_to_string(button:MouseButton)->u8{
         MouseButton::Right=>2,
         MouseButton::X1Back=>3,
         MouseButton::X2Forward=>4
+    }
+}
+#[derive(Serialize,Deserialize,Debug)]
+pub struct ActionsWheel{
+    actions:Vec<serde_json::Value>,
+}
+impl ActionsWheel{
+    pub fn new()->ActionsWheel{
+        ActionsWheel{
+            actions: vec![],
+        }
+    }
+    pub fn pause(&mut self,duration:u32)->&mut Self{
+        let json = format!(r#"{{"type":"pause","duration":{}}}"#,duration);
+        let val = serde_json::from_str(&json).unwrap();
+        self.actions.push(val);
+        self
+    }
+    pub fn scroll(&mut self,
+                  init_x_position:i32,
+                  init_y_position:i32,
+                  x_axis_scroll:i32,
+                  y_axis_scroll:i32)->&mut Self{
+        let json = format!(r#"{{"type":"scroll",
+                            "x":{},
+                            "y":{},
+                            "deltaX":{},
+                            "deltaY":{}}}"#,init_x_position,init_y_position,x_axis_scroll,y_axis_scroll);
+        let val = serde_json::from_str(&json).unwrap();
+        self.actions.push(val);
+        self
     }
 }
 
