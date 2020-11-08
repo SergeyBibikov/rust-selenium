@@ -148,6 +148,6 @@ impl Element{
 pub struct ElementRect{
     pub(crate)height:i32,
     pub(crate)width:i32,
-    pub(crate)x:i32,
-    pub(crate)y:i32,
+    pub(crate)x:f32,
+    pub(crate)y:f32,
 }

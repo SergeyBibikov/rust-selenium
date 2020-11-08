@@ -217,22 +217,24 @@ impl Browser{
             element_url: format!("{}/element/{}",self.session_url,res.1.clone()),
         })
     }
-    pub fn find_element(&self,loc_strategy:LocatorStrategy)->Element{
+    pub fn find_element(&self,loc_strategy:LocatorStrategy)->Result<Element,String>{
         let body = body_for_find_element(loc_strategy);
         let resp = send_and_read_body(Method::POST, &self.element_url, cont_length_header(&body), &body);
+        if resp.contains("error"){return Err(resp);}
         let resp = parse_value(&resp);
         let map: HashMap<String,String> = serde_json::from_str(&resp).unwrap();
         let res = map.iter().next().unwrap();
-        Element{
+        Ok(Element{
             element_gr_id:res.0.clone(),
             element_id:res.1.clone(),
             element_url: format!("{}/element/{}",self.session_url,res.1.clone()),
-        }
+        })
     }
-    pub fn find_elements(&self,loc_strategy:LocatorStrategy)->Vec<Element>{
+    pub fn find_elements(&self,loc_strategy:LocatorStrategy)->Result<Vec<Element>,String>{
         let mut result = vec![];
         let body = body_for_find_element(loc_strategy);
         let resp=send_and_read_body(Method::POST, &self.elements_url, cont_length_header(&body), &body);
+        if resp.contains("error"){return Err(resp);}
         let resp = parse_value(&resp);
         let map: Vec<HashMap<String,String>> = serde_json::from_str(&resp).unwrap();
         let element_ur = format!("{}/element",self.session_url);
@@ -245,7 +247,7 @@ impl Browser{
             element_url:format!("{}/{}",element_ur,res.1.clone()),
             });
         }
-        result
+        Ok(result)
     }
     pub fn get_window_rect(&self)->WindowRect{
         let resp = send_and_read_body(Method::GET, &self.window_rect_url, vec![], "");
@@ -901,7 +903,7 @@ pub mod tests{
     fn sw_t_fr_by_el() {
         let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless"]);
         br.open("https://vk.com");
-        let el = br.find_element(LocatorStrategy::CSS("#quick_login_frame"));
+        let el = br.find_element(LocatorStrategy::CSS("#quick_login_frame")).unwrap();
         let res = br.switch_to_frame_by_element(el);
         br.close_browser();
         assert_eq!(res,Ok(()));
@@ -912,7 +914,7 @@ pub mod tests{
         {
         let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless"]);
         br.open("https://vk.com");
-        el = br.find_element(LocatorStrategy::CSS("#ts_input"));
+        el = br.find_element(LocatorStrategy::CSS("#ts_input")).unwrap();
         br.close_browser();
         }
         let tr =el.element_gr_id.contains("element"); 
@@ -924,7 +926,7 @@ pub mod tests{
         {
         let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless"]);
         br.open("https://vk.com");
-        el = br.find_elements(LocatorStrategy::CSS("div"));
+        el = br.find_elements(LocatorStrategy::CSS("div")).unwrap();
         br.close_browser();
         }
         let len = el.len();
@@ -1061,7 +1063,7 @@ pub mod tests{
     fn el_screensh() {
         let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless","--window-size=800,600"]);
         br.open("https://vk.com");
-        let el = br.find_element(LocatorStrategy::CSS("#ts_input"));
+        let el = br.find_element(LocatorStrategy::CSS("#ts_input")).unwrap();
         br.take_element_screenshot(&el,"element.png").unwrap();
         br.close_browser();
         let arr=std::fs::read("element.png").unwrap().len();
@@ -1112,7 +1114,7 @@ pub mod tests{
     fn find_sub_el() {
         let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless","--window-size=400,200"]);
         br.open("https://vk.com");
-        let par_el= br.find_element(LocatorStrategy::CSS("#top_nav"));
+        let par_el= br.find_element(LocatorStrategy::CSS("#top_nav")).unwrap();
         let a = par_el.find_element_from_self(LocatorStrategy::CSS(".HeaderNav__item")).unwrap();
         br.close_browser();
         assert!(a.element_gr_id.contains("element"));
@@ -1121,7 +1123,7 @@ pub mod tests{
     fn sub_els() {
         let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless","--window-size=400,200"]);
         br.open("https://bash.im");
-        let par_el= br.find_element(LocatorStrategy::CSS("section.quotes"));
+        let par_el= br.find_element(LocatorStrategy::CSS("section.quotes")).unwrap();
         let a = par_el.find_elements_from_self(LocatorStrategy::CSS(".quote")).unwrap();
         br.close_browser();
         let len  = a.len();
@@ -1131,7 +1133,7 @@ pub mod tests{
     fn is_sel() {
         let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless","--window-size=400,200"]);
         br.open("https://vk.com");
-        let el= br.find_element(LocatorStrategy::CSS("#ts_input"));
+        let el= br.find_element(LocatorStrategy::CSS("#ts_input")).unwrap();
         let res = el.is_selected().unwrap();
         br.close_browser();
         assert!(res==false);
@@ -1140,7 +1142,7 @@ pub mod tests{
     fn get_arrtib() {
         let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless","--window-size=400,200"]);
         br.open("https://vk.com");
-        let el= br.find_element(LocatorStrategy::CSS(".placeholder_content"));
+        let el= br.find_element(LocatorStrategy::CSS(".placeholder_content")).unwrap();
         let res = el.get_attribute("aria-hidde").unwrap();
         let res2 = el.get_attribute("aria-hidden").unwrap();
         br.close_browser();
@@ -1151,7 +1153,7 @@ pub mod tests{
     fn get_property() {
         let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless","--window-size=400,200"]);
         br.open("https://vk.com");
-        let el= br.find_element(LocatorStrategy::CSS("#index_login_form"));
+        let el= br.find_element(LocatorStrategy::CSS("#index_login_form")).unwrap();
         let res_len = el.get_property("attributes").unwrap().len();
         let res_null = el.get_property("attributes2").unwrap();
         br.close_browser();
@@ -1161,7 +1163,7 @@ pub mod tests{
     fn get_css_property() {
         let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless","--window-size=400,200"]);
         br.open("https://vk.com");
-        let el= br.find_element(LocatorStrategy::CSS("#index_login_form"));
+        let el= br.find_element(LocatorStrategy::CSS("#index_login_form")).unwrap();
         let res = el.get_css_value("color").unwrap().contains("rgba");
         br.close_browser();
         assert!(res);
@@ -1170,7 +1172,7 @@ pub mod tests{
     fn get_el_text() {
         let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless","--window-size=400,200"]);
         br.open("https://vk.com");
-        let el= br.find_element(LocatorStrategy::CSS("#index_login_form"));
+        let el= br.find_element(LocatorStrategy::CSS("#index_login_form")).unwrap();
         let res = el.get_element_text().unwrap().contains("error");
         br.close_browser();
         assert!(!res);
@@ -1179,7 +1181,7 @@ pub mod tests{
     fn get_el_tag() {
         let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless","--window-size=400,200"]);
         br.open("https://vk.com");
-        let el= br.find_element(LocatorStrategy::CSS("#index_login_form"));
+        let el= br.find_element(LocatorStrategy::CSS("#index_login_form")).unwrap();
         let res = el.get_tag_name().unwrap().contains("error");
         br.close_browser();
         assert!(!res);
@@ -1188,7 +1190,7 @@ pub mod tests{
     fn get_el_rect() {
         let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless","--window-size=400,200"]);
         br.open("https://vk.com");
-        let el= br.find_element(LocatorStrategy::CSS("#index_login_form"));
+        let el= br.find_element(LocatorStrategy::CSS("#index_login_form")).unwrap();
         let res = el.get_element_rect().unwrap();
         br.close_browser();
         assert!(res.height==140);
@@ -1197,7 +1199,7 @@ pub mod tests{
     fn el_is_enabled() {
         let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless","--window-size=400,200"]);
         br.open("https://vk.com");
-        let el= br.find_element(LocatorStrategy::CSS("#index_login_form"));
+        let el= br.find_element(LocatorStrategy::CSS("#index_login_form")).unwrap();
         let res = el.is_enabled().unwrap();
         br.close_browser();
         assert!(res);
@@ -1206,7 +1208,7 @@ pub mod tests{
     fn get_comp_role() {
         let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless","--window-size=400,200"]);
         br.open("https://vk.com");
-        let el= br.find_element(LocatorStrategy::CSS("#index_login_form"));
+        let el= br.find_element(LocatorStrategy::CSS("#index_login_form")).unwrap();
         let res = el.get_computed_role();
         let res2 = el.get_computed_label();
         dbg!(&res);
@@ -1218,7 +1220,7 @@ pub mod tests{
     fn click_test() {
         let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless","--window-size=400,200"]);
         br.open("https://vk.com");
-        let el= br.find_element(LocatorStrategy::CSS("#index_login_form"));
+        let el= br.find_element(LocatorStrategy::CSS("#index_login_form")).unwrap();
         let res = el.click();
         br.close_browser();
         assert_eq!(res,Ok(()))
@@ -1227,7 +1229,7 @@ pub mod tests{
     fn el_send_k() {
         let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless","--window-size=400,200"]);
         br.open("https://vk.com");
-        let el= br.find_element(LocatorStrategy::CSS("#ts_input"));
+        let el= br.find_element(LocatorStrategy::CSS("#ts_input")).unwrap();
         el.send_keys("Sup!").unwrap();
         br.close_browser();
     }
@@ -1235,7 +1237,7 @@ pub mod tests{
     fn el_clear() {
         let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless","--window-size=400,200"]);
         br.open("https://vk.com");
-        let el= br.find_element(LocatorStrategy::CSS("#ts_input"));
+        let el= br.find_element(LocatorStrategy::CSS("#ts_input")).unwrap();
         let _ = el.send_keys("Sup!");
         el.clear_element().unwrap();
         br.close_browser();
@@ -1249,17 +1251,6 @@ pub mod tests{
         assert!(res1.is_ok()&&res2.is_err());
     }
     #[test]
-    fn perf_ac() {
-        let mut actions = Actions::new();
-        actions.release_focus();
-        actions.ctrl_a();
-        let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless","--window-size=400,200"]);
-        br.open("https:vk.com/");
-        let res = br.perform_actions(actions);
-        br.close_browser();
-        assert!(res.is_ok());
-    }
-    #[test]
     fn per_f_ac_with_keys() {
         let mut actions = Actions::new();
         let mut actions_keys = ActionsKeys::new();
@@ -1270,7 +1261,7 @@ pub mod tests{
         actions.add_key_actions(actions_keys);
         let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless","--window-size=1000,500"]);
         br.open("https:vk.com/");
-        br.find_element(LocatorStrategy::CSS("#ts_input")).click().unwrap();
+        br.find_element(LocatorStrategy::CSS("#ts_input")).unwrap().click().unwrap();
         let res = br.perform_actions(actions);
         br.close_browser();
         assert!(res.is_ok());
@@ -1281,7 +1272,7 @@ pub mod tests{
         let mut actions_keys = ActionsMouse::new();
         actions_keys.press_mouse_button(MouseButton::Left);
         actions_keys.pause(10);
-        actions_keys.move_mouse_to_point(3,200,300);
+        actions_keys.move_mouse_to_point(200,300);
         actions_keys.press_mouse_button(MouseButton::Right);
         actions.add_mouse_actions(actions_keys);
         let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless","--window-size=1000,500"]);
@@ -1303,7 +1294,7 @@ pub mod tests{
         mouse.pause(0);
         mouse.pause(0);
         mouse.press_mouse_button(MouseButton::Left);
-        mouse.move_mouse_to_point(3,200,300);
+        mouse.move_mouse_to_point(200,300);
         mouse.press_mouse_button(MouseButton::Right);
         actions.add_key_actions(keys);
         actions.add_mouse_actions(mouse);
@@ -1325,5 +1316,36 @@ pub mod tests{
         let res = br.perform_actions(actions);
         br.close_browser();
         assert!(res.is_ok());
+    }
+    #[test]
+    fn move_mouse_to_el() {
+        let mut actions = Actions::new();
+        let mut mouse = ActionsMouse::new();
+        let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless","--window-size=600,400"]);
+        br.open("https://vk.com");
+        let el = br.find_element(LocatorStrategy::CSS("#ts_input")).unwrap();    
+        mouse.move_mouse_to_element(&el).press_mouse_button(MouseButton::Left);
+        actions.add_mouse_actions(mouse);
+        let res = br.perform_actions(actions);
+        let res2 = br.release_actions();
+        br.close_browser();
+        assert!(res.is_ok());
+        assert!(res2.is_ok());
+    }
+    #[test]
+    fn dranddrop() {
+        let mut br = Browser::start_session("chrome", consts::OS, vec!["--headless","--window-size=1500,800"]);
+        br.open("http://webdriveruniversity.com/Actions/index.html");
+        let mut actions = Actions::new();
+        let mut mouse = ActionsMouse::new();
+         let el = br.find_element(LocatorStrategy::CSS("div#draggable")).unwrap();
+        let el_dest = br.find_element(LocatorStrategy::CSS("div#droppable")).unwrap(); 
+        mouse.drag_n_drop(el, el_dest);
+        actions.add_mouse_actions(mouse);
+        let res = br.perform_actions(actions);
+        let res2 = br.release_actions();
+        br.close_browser();
+        assert!(res.is_ok());
+        assert!(res2.is_ok());        
     }
 }

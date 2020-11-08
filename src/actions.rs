@@ -1,6 +1,9 @@
 use serde::{Serialize,Deserialize};
 use super::specialkey::*;
-
+use super::element::*;
+/// The Actions which should be permormed via the perform_actions and release_actions methods of the Browser instance
+/// may consist of keys actions, scroll wheel actions and mouse actions. Once you construct the corresponding actions sequence
+/// it should be passed to the add_..._actions method to be added to the main Actions instance.
 #[derive(Serialize,Deserialize,Debug)]
 pub struct Actions{
     actions:Vec<serde_json::Value>,
@@ -23,35 +26,6 @@ impl Actions{
             act_with_ids.push(v);
         }
         self.actions = act_with_ids;
-    }
-    pub fn release_focus(&mut self)->&mut Self{
-        let a = serde_json::json!({"type":"pointer", "actions":[{"type":"pointerDown","button":0}]});
-        self.actions.push(a);
-        self
-    }
-    pub fn ctrl_a(&mut self)->&mut Self{
-        let a = serde_json::from_str(r#"{"type":"key", "actions":[
-                                    {"type":"keyDown","value":"\uE009"},
-                                    {"type":"keyDown","value":"a"},
-                                    {"type":"keyUp","value":"\uE009"}]}"#).unwrap();
-        self.actions.push(a);
-        self
-    }
-    pub fn ctrl_c(&mut self)->&mut Self{
-        let a = serde_json::from_str(r#"{"type":"key", "actions":[
-                                    {"type":"keyDown","value":"\uE009"},
-                                    {"type":"keyDown","value":"c"},
-                                    {"type":"keyUp","value":"\uE009"}]}"#).unwrap();
-        self.actions.push(a);
-        self
-    }
-    pub fn ctrl_v(&mut self)->&mut Self{
-        let a = serde_json::from_str(r#"{"type":"key", "actions":[
-                                    {"type":"keyDown","value":"\uE009"},
-                                    {"type":"keyDown","value":"v"},
-                                    {"type":"keyUp","value":"\uE009"}]}"#).unwrap();
-        self.actions.push(a);
-        self
     }
     pub fn add_key_actions(&mut self, key_actions:ActionsKeys)->&mut Self{
         let temp_val = serde_json::to_string(&key_actions).unwrap();
@@ -234,10 +208,19 @@ impl ActionsMouse{
         self.actions.push(val);
         self
     }
-    pub fn move_mouse_to_point(&mut self, duration: u32, x: i32,y: i32)->&mut Self{
-        let json = format!(r#"{{"type":"pointerMove","duration":{},"origin":"viewport","x":{},"y":{}}}"#,duration,x,y);
+    /// The point's coordinates are relative to the viewport, if x or y is larger
+    /// than the coordinate of the viewport, you will get an error calling
+    /// the perform_actions method of the Browser
+    pub fn move_mouse_to_point(&mut self, x: i32,y: i32)->&mut Self{
+        let json = format!(r#"{{"type":"pointerMove","duration":0,"origin":"viewport","x":{},"y":{}}}"#,x,y);
         let val = serde_json::from_str(&json).unwrap();
         self.actions.push(val);
+        self
+    }
+    /// Moves mouse to the center of the element. Will cause an error if the element is not in the viewport
+    pub fn move_mouse_to_element(&mut self,element:&Element)->&mut Self{
+        let el = element.get_element_rect().unwrap();
+        self.move_mouse_to_point(el.x as i32+el.width/2, el.y as i32 +el.height/2);
         self
     }
     pub fn cancel_action(&mut self)->&mut Self{
@@ -246,7 +229,13 @@ impl ActionsMouse{
         self.actions.push(val);
         self
     }
-
+    pub fn drag_n_drop(&mut self,elem_to_drag:Element,elem_destination:Element)->&mut Self{
+        self.move_mouse_to_element(&elem_to_drag)
+        .press_mouse_button(MouseButton::Left)
+        .move_mouse_to_element(&elem_destination)
+        .release_mouse_button(MouseButton::Left);
+        self
+    }
 }
 fn mouse_button_to_string(button:MouseButton)->u8{
     match button{
