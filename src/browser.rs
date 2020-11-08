@@ -19,6 +19,13 @@ struct Session{
     sessionId: String,
 }
 
+pub enum BrowserName{
+    Chrome,
+    Firefox
+}
+/// Main crate struct
+/// 
+/// Contains methods for interacting with the selenium server 
 #[derive(Debug)]
 pub struct Browser{
     session_url: String, //The session/ url for constructing other urls
@@ -53,8 +60,11 @@ pub struct Browser{
 }
 
 impl Browser{
-    pub fn start_session(browser: &str, args:Vec<&str>)->Browser{
-        let req_body = create_session_body_json(browser,std::env::consts::OS, args);
+    ///The only method to construct the Browser instance. Currently, the args are supported for chrome,
+    /// while for firefox they will be ignored. Proper Chrome and Firefox options handling will be
+    /// added in future releases. 
+    pub fn start_session(browser: BrowserName, args:Vec<&str>)->Browser{
+        let req_body = create_session_body_json(browser,args);
         let headers = vec![format!("Content-Length: {}",req_body.len()+2)];
         let response = send_request(Method::POST, "wd/hub/session", headers, &req_body).unwrap();
         let resp_body = resp_body(response).unwrap();
@@ -93,24 +103,34 @@ impl Browser{
 
         }
     }
-    pub fn open(&self,url:&str){
-        let body = format!(r#"{{"url":"{}"}}"#,url);
-        send_request(Method::POST, &self.go_to_url, cont_length_header(&body), &body).unwrap();
+    ///Open a webpage or a local file
+    pub fn open(&self,uri:&str)->Result<(),String>{
+        let body = format!(r#"{{"url":"{}"}}"#,uri);
+        let resp = send_request(Method::POST, &self.go_to_url, cont_length_header(&body), &body).unwrap();
+        if resp.contains("error"){return Err(resp);}
+        Ok(())
     }
-    pub fn get_link(&self)->String{
+    ///Get the url of the current page.
+    pub fn get_link(&self)->Result<String,String>{
         let resp = resp_body(send_request(Method::GET, &self.go_to_url, vec![], "").unwrap()).unwrap();
-        dbg!(&resp);
-        parse_value(&resp).replace("\"","")
+        if resp.contains("error"){return Err(resp);}
+        Ok(parse_value(&resp).replace("\"",""))
     }
-    ///Deletes current session. As the Browser struct needs dropping, it is better to call drop() after this method in long-multibrowser scenarios.  
-    pub fn close_browser(&mut self){
-        send_request(Method::DELETE, &self.session_url, vec![], "").unwrap();
+    ///Deletes current session. As the Browser struct needs dropping, 
+    ///it is better to call drop() after this method in long-multibrowser scenarios.  
+    pub fn close_browser(&mut self)->Result<(),String>{
+        let resp = send_request(Method::DELETE, &self.session_url, vec![], "").unwrap();
+        if resp.contains("error"){return Err(resp);}
         self.session_url = String::from("");
+        Ok(())
     }
-    pub fn get_timeouts(&self)->Timeouts{
+    ///Returns the session timouts data
+    pub fn get_timeouts(&self)->Result<Timeouts,String>{
         let resp = send_and_read_body(Method::GET, &self.timeouts_url, vec![], "");
-        serde_json::from_str(&parse_value(&resp)).unwrap()
+        if resp.contains("error"){return Err(resp);}
+        Ok(serde_json::from_str(&parse_value(&resp)).unwrap())
     }
+    ///Change the session timouts data
     pub fn set_timeouts(&self, timeouts: &Timeouts)->Result<(),&str>{
         let timeouts_json = serde_json::to_string(timeouts).unwrap();
         if let Ok(mess)= send_request(Method::POST, &self.timeouts_url, cont_length_header(&timeouts_json), &timeouts_json){
@@ -122,9 +142,12 @@ impl Browser{
         }
         Err("The timeouts were not set correctly")
     }
-    pub fn back(&self){
+    ///Return to the previous page
+    pub fn back(&self)->Result<(),String>{
         let body = r#"{"return":true}"#;
-        send_request(Method::POST,&self.back_url, cont_length_header(&body), &body).unwrap();
+        let resp = send_request(Method::POST,&self.back_url, cont_length_header(&body), &body).unwrap();
+        if resp.contains("error"){return Err(resp);}
+        Ok(())
     }
     pub fn forward(&self){
         let body = r#"{"forward":true}"#;
@@ -437,17 +460,22 @@ impl Browser{
 pub (self) mod utils{
     use super::*;
 
-    pub (super) fn create_session_body_json(browser:&str,os:&str, args:Vec<&str>)->String{
+    pub (super) fn create_session_body_json(browser:BrowserName,args:Vec<&str>)->String{
             match browser{
-                "chrome"=> create_chrome_session(os,args),
-                _=>panic!("Sorry, so far only chrome is supported")
+                BrowserName::Chrome=> create_chrome_session(args),
+                BrowserName::Firefox=>create_firefox_session(),
             }
     }
-    pub (super) fn create_chrome_session(os:&str,args:Vec<&str>)->String{
-            let one=format!(r#"{{"capabilities": {{"alwaysMatch":{{"platformName":"{}"}}"#,os);
+    pub (super) fn create_chrome_session(args:Vec<&str>)->String{
+            let one=format!(r#"{{"capabilities": {{"alwaysMatch":{{"platformName":"{}"}}"#,std::env::consts::OS);
             let args = gen_args(args);
             let two=format!(r#"{},"firstMatch":[{{"browserName":"chrome","goog:chromeOptions":{{"args":{}}}}}]}}}}"#,one,args);
             two
+    }
+    pub (super) fn create_firefox_session()->String{
+        let one=format!(r#"{{"capabilities": {{"alwaysMatch":{{"platformName":"{}"}}"#,std::env::consts::OS);
+        let two=format!(r#"{},"firstMatch":[{{"browserName":"firefox"}}]}}}}"#,one);
+        two
     }
 
     pub (super) fn gen_args(args:Vec<&str>)->String{
@@ -510,12 +538,12 @@ pub (self) mod utils{
 TODO
 pub struct ChromeOptions{}
 */
-
+///Needed to call the new_window method
 pub enum NewWindowType{
     Tab,
     Window
 }
-
+///Represents window height,width,x-axis and y-axis
 #[derive(Serialize,Deserialize,Debug,PartialEq,Clone)]
 pub struct WindowRect{
     pub(self)height:i32,
@@ -528,7 +556,9 @@ impl WindowRect{
         WindowRect{ height, width, x, y}
     }
 }
-
+///Struct to manage session cookies
+/// 
+///
 #[allow(non_snake_case)]
 #[derive(Serialize,Deserialize,Debug,Clone)]
 pub struct Cookie{
@@ -543,6 +573,7 @@ pub struct Cookie{
 }
 
 impl Cookie{
+    ///Create a cookie and customize all its fields
     pub fn new_all(domain:String, expiry:u64,same_site:String, http_only:bool,name:String,path:String,secure:bool,value:String)->Self{
         Cookie{
             domain,
@@ -555,6 +586,7 @@ impl Cookie{
             value
         }
     }
+    ///Create default cookie customize only name and value
     pub fn new(name:String,value:String)->Self{
         Cookie{name,value,..Default::default()}
     }
@@ -590,7 +622,7 @@ impl Default for Cookie{
         }
     }
 }
-
+///Struct to manage session implicit, page load and script timeouts
 #[allow(non_snake_case)]
 #[derive(Serialize,Deserialize,Debug,PartialEq)]
 pub struct Timeouts{
@@ -626,6 +658,7 @@ impl Timeouts{
     }
 
 }
+///Main struct for print settings
 #[allow(non_snake_case)]
 #[derive(Serialize,Deserialize,Debug)]
 pub struct PrintSettings{
@@ -675,6 +708,7 @@ impl Default for PrintSettings{
         }
     }
 }
+///One of the PrintSettings fields
 #[derive(Serialize,Deserialize,Debug)]
 pub struct Page{
     width:f32,
@@ -699,6 +733,7 @@ impl Default for Page{
         Page{width:21.59,height:27.94}
     }
 }
+///One of the PrintSettings fields
 #[derive(Serialize,Deserialize,Debug)]
 pub struct Margin{
     top:u32,
@@ -727,20 +762,21 @@ impl Default for Margin{
         }
     }
 }
+///Needed for the PrintSettings struct
 pub enum Orientation{
     PORTRAIT,
     LANDSCAPE
 }
 
 //TESTS
-pub mod tests{
+mod tests{
 
     use super::*;
     use super::Element;
     use std::env::*;
     #[test]
     fn create_session() {
-        let mut browser = Browser::start_session("chrome",vec!["--headless"]);
+        let mut browser = Browser::start_session(BrowserName::Chrome,vec!["--headless"]);
         let sess:String; 
         {let mut iter = browser.session_url.split("/");
         iter.next();
@@ -752,20 +788,25 @@ pub mod tests{
         assert_eq!(32,sess.len());
     }
     #[test]
-    fn go_to_vk() {
-        let mut browser = Browser::start_session("chrome", vec!["--headless"]);
-        browser.open("https://vk.com");
-        let link= browser.get_link();
+    fn firefox_session() {
+        let mut browser = Browser::start_session(BrowserName::Firefox,vec![]);
         browser.close_browser();
-        assert_eq!(&link,"https://vk.com/");
+    }
+    #[test]
+    fn go_to_vk() {
+        let mut browser = Browser::start_session(BrowserName::Chrome, vec!["--headless"]);
+        browser.open("https://vk.com");
+        let link = browser.get_link().unwrap();
+        browser.close_browser();
+        assert_eq!(link,"https://vk.com/");
     }
     #[test]
     #[should_panic]
     fn close_browser() {
-        let mut browser = Browser::start_session("chrome", vec!["--headless"]);
+        let mut browser = Browser::start_session(BrowserName::Chrome, vec!["--headless"]);
         browser.open("http://localhost:4444/wd/hub/status");
         browser.close_browser();        
-        let a = browser.get_link();
+        let a = browser.get_link().unwrap();
         if a.contains("invalid"){panic!("Invalid session id");}
     }
     #[test]
@@ -777,15 +818,15 @@ pub mod tests{
     fn get_timeouts() {
         let timeouts:Timeouts;
         {
-            let mut br = Browser::start_session("chrome",  vec!["--headless"]);
-            timeouts= br.get_timeouts();
+            let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless"]);
+            timeouts= br.get_timeouts().unwrap();
             br.close_browser();
         }
         assert!(timeouts.implicit==0&&timeouts.script==30000);
     }
     #[test]
     fn set_timeouts() {
-        let mut br = Browser::start_session("chrome",  vec!["--headless"]);
+        let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless"]);
         let timeouts = Timeouts::set_all(1000, 3000, 300000);
         assert!(br.set_timeouts(&timeouts)==Ok(()));
         br.close_browser();
@@ -804,29 +845,29 @@ pub mod tests{
     #[test]
     fn back_test() {
         let link: String;
-        {let mut br = Browser::start_session("chrome",  vec!["--headless"]);
+        {let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless"]);
         br.open("https://vk.com/");
         br.open("https://m.facebook.com/");
         br.back();
-        link = br.get_link();
+        link = br.get_link().unwrap();
         br.close_browser();}
         assert_eq!(link.as_str(),"https://vk.com/");
     }
     #[test]
     fn forward_test() {
         let link: String;
-        {let mut br = Browser::start_session("chrome",  vec!["--headless"]);
+        {let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless"]);
         br.open("https://vk.com/");
         br.open("https://m.facebook.com/");
         br.back();
         br.forward();
-        link = br.get_link();        
+        link = br.get_link().unwrap();        
         br.close_browser();}
         assert_eq!(&link,"https://m.facebook.com/");
     }
     #[test]
     fn refresh_test() {
-        let mut br = Browser::start_session("chrome",  vec!["--headless"]);
+        let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless"]);
         br.open("https://vk.com/");
         assert_eq!(br.refresh(),Ok(()));
         br.close_browser();
@@ -834,17 +875,17 @@ pub mod tests{
     #[test]
     fn get_title_test() {
         let title:String;
-        {let mut br = Browser::start_session("chrome",  vec!["--headless"]);
+        {let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless"]);
         br.open("https://www.w3.org/TR/webdriver/");
         title =br.get_title();
-        br.close_browser()}
+        br.close_browser();}
         assert_eq!(title,String::from("WebDriver"));
         
     }
     #[test]
     fn window_handle() {
         let handle: String;
-        {let mut br = Browser::start_session("chrome",  vec!["--headless"]);
+        {let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless"]);
         br.open("https://vk.com");
         handle = br.get_window_handle();
         br.close_browser();}
@@ -854,7 +895,7 @@ pub mod tests{
     #[test]
     fn switch_window(){
         let res :Result<(),String>;
-        let mut br = Browser::start_session("chrome",  vec!["--headless"]);
+        let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless"]);
         br.open("https://vk.com");
         let handle = br.get_window_handle();
         res = br.switch_to_window(handle);assert_eq!(Ok(()),res);
@@ -864,7 +905,7 @@ pub mod tests{
     fn get_handles() {
         let handles;
         {
-            let mut br = Browser::start_session("chrome",  vec!["--headless"]);
+            let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless"]);
             br.open("https://vk.com");
             handles = br.get_window_handles();
             br.close_browser();
@@ -876,7 +917,7 @@ pub mod tests{
     fn close_window() {
         let handles;
         {
-            let mut br = Browser::start_session("chrome",  vec!["--headless"]);
+            let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless"]);
             br.open("https://vk.com");
             handles = br.close_window();
             br.close_browser();
@@ -885,14 +926,14 @@ pub mod tests{
     }
     #[test]
     fn new_window(){
-        let mut br = Browser::start_session("chrome",  vec!["--headless"]);
+        let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless"]);
         let wind = br.new_window(NewWindowType::Tab);
         assert!(wind.1=="tab"&&br.get_window_handles().len()==2);
         br.close_browser();
     }
     #[test]
     fn sw_to_frame_by_id() {
-        let mut br = Browser::start_session("chrome",  vec!["--headless"]);
+        let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless"]);
         br.open("https://bash.im");
         let res = br.switch_to_frame_by_id(0);
         br.close_browser();
@@ -901,7 +942,7 @@ pub mod tests{
     }
     #[test]
     fn sw_t_fr_by_el() {
-        let mut br = Browser::start_session("chrome",  vec!["--headless"]);
+        let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless"]);
         br.open("https://vk.com");
         let el = br.find_element(LocatorStrategy::CSS("#quick_login_frame")).unwrap();
         let res = br.switch_to_frame_by_element(el);
@@ -912,7 +953,7 @@ pub mod tests{
     fn find_element() {
         let el;
         {
-        let mut br = Browser::start_session("chrome",  vec!["--headless"]);
+        let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless"]);
         br.open("https://vk.com");
         el = br.find_element(LocatorStrategy::CSS("#ts_input")).unwrap();
         br.close_browser();
@@ -924,7 +965,7 @@ pub mod tests{
     fn find_els() {
         let el;
         {
-        let mut br = Browser::start_session("chrome",  vec!["--headless"]);
+        let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless"]);
         br.open("https://vk.com");
         el = br.find_elements(LocatorStrategy::CSS("div")).unwrap();
         br.close_browser();
@@ -935,7 +976,7 @@ pub mod tests{
     #[test]
     fn sw_to_par_fr() {
         let res;
-        let mut br = Browser::start_session("chrome",  vec!["--headless"]);
+        let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless"]);
         br.open("https://vk.com");
         res = br.switch_to_parent_frame();
         br.close_browser(); 
@@ -943,14 +984,14 @@ pub mod tests{
     }
     #[test]
     fn get_wind_rect() {
-        let mut br = Browser::start_session("chrome",  vec!["--headless","--window-size=400,200"]);
+        let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless","--window-size=400,200"]);
         let wr = br.get_window_rect();
         br.close_browser();
         assert!(wr==WindowRect{height:200,width:400,x:0,y:0});
     }
     #[test]
     fn set_wind_rect(){
-        let mut br = Browser::start_session("chrome",  vec!["--headless","--window-size=400,200"]);
+        let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless","--window-size=400,200"]);
         let wr = WindowRect{height:600, width:1000,x:250,y:250};
         let wr_new = br.set_sindow_rect(&wr).unwrap();
         br.close_browser();
@@ -959,7 +1000,7 @@ pub mod tests{
     }
     #[test]
     fn maximize() {
-        let mut br = Browser::start_session("chrome",  vec!["--headless","--window-size=400,200"]);
+        let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless","--window-size=400,200"]);
         let a = br.maximize_window().unwrap();
         br.close_browser();
         let wr = WindowRect{height:200, width:400,x:0,y:0};
@@ -980,7 +1021,7 @@ pub mod tests{
     }
     #[test]
     fn fullsize() {
-        let mut br = Browser::start_session("chrome",  vec!["--headless","--window-size=400,200"]);
+        let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless","--window-size=400,200"]);
         let a = br.fullscreen().unwrap();
         br.close_browser();
         assert!(a.x==0&&a.y==0);
@@ -988,7 +1029,7 @@ pub mod tests{
 
     #[test]
     fn src() {
-        let mut br = Browser::start_session("chrome",  vec!["--headless","--window-size=400,200"]);
+        let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless","--window-size=400,200"]);
         br.open("http://localhost:4444/wd/hub/status");
         let a = br.source();
         br.close_browser();
@@ -999,7 +1040,7 @@ pub mod tests{
     fn script_test() {
         let script = "return 3+2";
         let res = vec!["5",r#""Hello""#];
-        let mut br = Browser::start_session("chrome",  vec!["--headless"]);
+        let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless"]);
         let res = br.execute_sync(script, &res).unwrap();
         br.close_browser();
         assert!(res.contains("5"));
@@ -1007,7 +1048,7 @@ pub mod tests{
     
     #[test]
     fn cookies() {
-        let mut br = Browser::start_session("chrome",  vec!["--headless"]);
+        let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless"]);
         br.open("https://vk.com");
         let cook = br.get_all_cookies();
         br.close_browser();
@@ -1016,7 +1057,7 @@ pub mod tests{
 
     #[test]
     fn get_cookie() {
-        let mut br = Browser::start_session("chrome",  vec!["--headless"]);
+        let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless"]);
         br.open("https://vk.com");
         let c = br.get_cookie("tmr_lvidTS").unwrap();
         br.close_browser();
@@ -1025,7 +1066,7 @@ pub mod tests{
 
     #[test]
     fn add_cookie() {
-        let mut br = Browser::start_session("chrome",  vec!["--headless"]);
+        let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless"]);
         br.open("https://vk.com");
         let cook = Cookie::new_all(String::from(""), 1000, String::from("Lax"), false, String::from("tmr_detect"), String::from(""), false, String::from("0%7C1604223632022"));
         assert_eq!(br.add_cookie(cook),Ok(()));
@@ -1034,7 +1075,7 @@ pub mod tests{
 
     #[test]
     fn a_del_all_cook() {
-        let mut br = Browser::start_session("chrome",  vec!["--headless"]);
+        let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless"]);
         br.open("https://vk.com");
         br.delete_all_cookies().unwrap();
         let cook = br.get_all_cookies();
@@ -1043,7 +1084,7 @@ pub mod tests{
     }
     #[test]
     fn del_cookie() {
-        let mut br = Browser::start_session("chrome",  vec!["--headless"]);
+        let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless"]);
         br.open("https://vk.com");
         let r = br.delete_cookie("remixjsp");
         br.close_browser();
@@ -1051,7 +1092,7 @@ pub mod tests{
     }
     #[test]
     fn screensh() {
-        let mut br = Browser::start_session("chrome",  vec!["--headless","--window-size=7680,4320"]);
+        let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless","--window-size=7680,4320"]);
         br.open("https://vk.com");
         br.take_screenshot("screen.png").unwrap();
         br.close_browser();
@@ -1061,7 +1102,7 @@ pub mod tests{
     }
     #[test]
     fn el_screensh() {
-        let mut br = Browser::start_session("chrome",  vec!["--headless","--window-size=800,600"]);
+        let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless","--window-size=800,600"]);
         br.open("https://vk.com");
         let el = br.find_element(LocatorStrategy::CSS("#ts_input")).unwrap();
         br.take_element_screenshot(&el,"element.png").unwrap();
@@ -1072,7 +1113,7 @@ pub mod tests{
     }
     #[test]
     fn pr_page() {
-        let mut br = Browser::start_session("chrome",  vec!["--headless","--window-size=2400,1200"]);
+        let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless","--window-size=2400,1200"]);
         br.open("https://vk.com");
         let mut p  = PrintSettings::default();
         p.set_orientation(Orientation::LANDSCAPE);
@@ -1086,7 +1127,7 @@ pub mod tests{
 
     #[test]
     fn alerts() {
-        let mut br = Browser::start_session("chrome",  vec!["--headless"]);
+        let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless"]);
         br.open("https://vk.com");
         let resp = br.dismiss_alert().is_err();
         let resp2 = br.allow_alert().is_err();
@@ -1095,7 +1136,7 @@ pub mod tests{
     }
     #[test]
     fn get_send_alert_text() {
-        let mut br = Browser::start_session("chrome",  vec!["--headless"]);
+        let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless"]);
         br.open("https://vk.com");
         let resp = br.get_alert_text().is_err();
         let resp2 = br.send_alert_text("I am the text").is_err();
@@ -1104,7 +1145,7 @@ pub mod tests{
     }
     #[test]
     fn active_el() {
-        let mut br = Browser::start_session("chrome",  vec!["--headless"]);
+        let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless"]);
         br.open("https://vk.com");
         let a = br.get_active_element().unwrap();
         br.close_browser();
@@ -1112,7 +1153,7 @@ pub mod tests{
     }
     #[test]
     fn find_sub_el() {
-        let mut br = Browser::start_session("chrome",  vec!["--headless","--window-size=400,200"]);
+        let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless","--window-size=400,200"]);
         br.open("https://vk.com");
         let par_el= br.find_element(LocatorStrategy::CSS("#top_nav")).unwrap();
         let a = par_el.find_element_from_self(LocatorStrategy::CSS(".HeaderNav__item")).unwrap();
@@ -1121,7 +1162,7 @@ pub mod tests{
     }
     #[test]
     fn sub_els() {
-        let mut br = Browser::start_session("chrome",  vec!["--headless","--window-size=400,200"]);
+        let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless","--window-size=400,200"]);
         br.open("https://bash.im");
         let par_el= br.find_element(LocatorStrategy::CSS("section.quotes")).unwrap();
         let a = par_el.find_elements_from_self(LocatorStrategy::CSS(".quote")).unwrap();
@@ -1131,7 +1172,7 @@ pub mod tests{
     }
     #[test]
     fn is_sel() {
-        let mut br = Browser::start_session("chrome",  vec!["--headless","--window-size=400,200"]);
+        let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless","--window-size=400,200"]);
         br.open("https://vk.com");
         let el= br.find_element(LocatorStrategy::CSS("#ts_input")).unwrap();
         let res = el.is_selected().unwrap();
@@ -1140,7 +1181,7 @@ pub mod tests{
     }
     #[test]
     fn get_arrtib() {
-        let mut br = Browser::start_session("chrome",  vec!["--headless","--window-size=400,200"]);
+        let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless","--window-size=400,200"]);
         br.open("https://vk.com");
         let el= br.find_element(LocatorStrategy::CSS(".placeholder_content")).unwrap();
         let res = el.get_attribute("aria-hidde").unwrap();
@@ -1151,7 +1192,7 @@ pub mod tests{
     }
     #[test]
     fn get_property() {
-        let mut br = Browser::start_session("chrome",  vec!["--headless","--window-size=400,200"]);
+        let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless","--window-size=400,200"]);
         br.open("https://vk.com");
         let el= br.find_element(LocatorStrategy::CSS("#index_login_form")).unwrap();
         let res_len = el.get_property("attributes").unwrap().len();
@@ -1161,7 +1202,7 @@ pub mod tests{
     }
     #[test]
     fn get_css_property() {
-        let mut br = Browser::start_session("chrome",  vec!["--headless","--window-size=400,200"]);
+        let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless","--window-size=400,200"]);
         br.open("https://vk.com");
         let el= br.find_element(LocatorStrategy::CSS("#index_login_form")).unwrap();
         let res = el.get_css_value("color").unwrap().contains("rgba");
@@ -1170,7 +1211,7 @@ pub mod tests{
     }
     #[test]
     fn get_el_text() {
-        let mut br = Browser::start_session("chrome",  vec!["--headless","--window-size=400,200"]);
+        let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless","--window-size=400,200"]);
         br.open("https://vk.com");
         let el= br.find_element(LocatorStrategy::CSS("#index_login_form")).unwrap();
         let res = el.get_element_text().unwrap().contains("error");
@@ -1179,7 +1220,7 @@ pub mod tests{
     }
     #[test]
     fn get_el_tag() {
-        let mut br = Browser::start_session("chrome",  vec!["--headless","--window-size=400,200"]);
+        let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless","--window-size=400,200"]);
         br.open("https://vk.com");
         let el= br.find_element(LocatorStrategy::CSS("#index_login_form")).unwrap();
         let res = el.get_tag_name().unwrap().contains("error");
@@ -1188,7 +1229,7 @@ pub mod tests{
     }
     #[test]
     fn get_el_rect() {
-        let mut br = Browser::start_session("chrome",  vec!["--headless","--window-size=400,200"]);
+        let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless","--window-size=400,200"]);
         br.open("https://vk.com");
         let el= br.find_element(LocatorStrategy::CSS("#index_login_form")).unwrap();
         let res = el.get_element_rect().unwrap();
@@ -1197,7 +1238,7 @@ pub mod tests{
     }
     #[test]
     fn el_is_enabled() {
-        let mut br = Browser::start_session("chrome",  vec!["--headless","--window-size=400,200"]);
+        let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless","--window-size=400,200"]);
         br.open("https://vk.com");
         let el= br.find_element(LocatorStrategy::CSS("#index_login_form")).unwrap();
         let res = el.is_enabled().unwrap();
@@ -1206,7 +1247,7 @@ pub mod tests{
     }
     #[test]
     fn get_comp_role() {
-        let mut br = Browser::start_session("chrome",  vec!["--headless","--window-size=400,200"]);
+        let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless","--window-size=400,200"]);
         br.open("https://vk.com");
         let el= br.find_element(LocatorStrategy::CSS("#index_login_form")).unwrap();
         let res = el.get_computed_role();
@@ -1218,7 +1259,7 @@ pub mod tests{
     }
     #[test]
     fn click_test() {
-        let mut br = Browser::start_session("chrome",  vec!["--headless","--window-size=400,200"]);
+        let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless","--window-size=400,200"]);
         br.open("https://vk.com");
         let el= br.find_element(LocatorStrategy::CSS("#index_login_form")).unwrap();
         let res = el.click();
@@ -1227,7 +1268,7 @@ pub mod tests{
     }
     #[test]
     fn el_send_k() {
-        let mut br = Browser::start_session("chrome",  vec!["--headless","--window-size=400,200"]);
+        let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless","--window-size=400,200"]);
         br.open("https://vk.com");
         let el= br.find_element(LocatorStrategy::CSS("#ts_input")).unwrap();
         el.send_keys("Sup!").unwrap();
@@ -1235,7 +1276,7 @@ pub mod tests{
     }
     #[test]
     fn el_clear() {
-        let mut br = Browser::start_session("chrome",  vec!["--headless","--window-size=400,200"]);
+        let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless","--window-size=400,200"]);
         br.open("https://vk.com");
         let el= br.find_element(LocatorStrategy::CSS("#ts_input")).unwrap();
         let _ = el.send_keys("Sup!");
@@ -1244,7 +1285,7 @@ pub mod tests{
     }
     #[test]
     fn rel_actions() {
-        let mut br = Browser::start_session("chrome",  vec!["--headless","--window-size=400,200"]);
+        let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless","--window-size=400,200"]);
         let res1 = br.release_actions();
         br.close_browser();
         let res2 = br.release_actions();
@@ -1259,7 +1300,7 @@ pub mod tests{
         actions_keys.release_special_key(SpecialKey::ShiftLeft);
         actions_keys.press_key("b");
         actions.add_key_actions(actions_keys);
-        let mut br = Browser::start_session("chrome",  vec!["--headless","--window-size=1000,500"]);
+        let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless","--window-size=1000,500"]);
         br.open("https:vk.com/");
         br.find_element(LocatorStrategy::CSS("#ts_input")).unwrap().click().unwrap();
         let res = br.perform_actions(actions);
@@ -1275,7 +1316,7 @@ pub mod tests{
         actions_keys.move_mouse_to_point(200,300);
         actions_keys.press_mouse_button(MouseButton::Right);
         actions.add_mouse_actions(actions_keys);
-        let mut br = Browser::start_session("chrome",  vec!["--headless","--window-size=1000,500"]);
+        let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless","--window-size=1000,500"]);
         br.open("https:vk.com/");
         let res = br.perform_actions(actions);
         let res2 = br.release_actions();
@@ -1298,7 +1339,7 @@ pub mod tests{
         mouse.press_mouse_button(MouseButton::Right);
         actions.add_key_actions(keys);
         actions.add_mouse_actions(mouse);
-        let mut br = Browser::start_session("chrome",  vec!["--headless","--window-size=1000,500"]);
+        let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless","--window-size=1000,500"]);
         br.open("https:vk.com/");
         let res = br.perform_actions(actions);
         let res2 = br.release_actions();
@@ -1310,7 +1351,7 @@ pub mod tests{
         let mut actions = Actions::new();
         let mut wheel = ActionsWheel::new();
         wheel.scroll(0, 0, 100, 100).scroll(0, 0, 0, 1000);
-        let mut br = Browser::start_session("chrome",  vec!["--headless","--window-size=600,400"]);
+        let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless","--window-size=600,400"]);
         br.open("https://yandex.ru/");
         actions.add_wheel_actions(wheel);
         let res = br.perform_actions(actions);
@@ -1321,7 +1362,7 @@ pub mod tests{
     fn move_mouse_to_el() {
         let mut actions = Actions::new();
         let mut mouse = ActionsMouse::new();
-        let mut br = Browser::start_session("chrome",  vec!["--headless","--window-size=600,400"]);
+        let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless","--window-size=600,400"]);
         br.open("https://vk.com");
         let el = br.find_element(LocatorStrategy::CSS("#ts_input")).unwrap();    
         mouse.move_mouse_to_element(&el).press_mouse_button(MouseButton::Left);
@@ -1334,7 +1375,7 @@ pub mod tests{
     }
     #[test]
     fn dranddrop() {
-        let mut br = Browser::start_session("chrome",  vec!["--headless","--window-size=1500,800"]);
+        let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless","--window-size=1500,800"]);
         br.open("http://webdriveruniversity.com/Actions/index.html");
         let mut actions = Actions::new();
         let mut mouse = ActionsMouse::new();

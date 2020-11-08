@@ -1,5 +1,4 @@
-///The keys with One and Two endings have two codepoints in WEbDriver spec
-/// OSLeft and OSRight are also called "Meta" keys
+///Keyboard special keys
 pub enum SpecialKey{
     ShiftLeft,
     ShiftRight,

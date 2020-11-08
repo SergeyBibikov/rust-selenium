@@ -1,13 +1,17 @@
 use serde::{Serialize,Deserialize};
 use super::specialkey::*;
 use super::element::*;
-/// The Actions which should be permormed via the perform_actions and release_actions methods of the Browser instance
+
+///Main actions struct
+/// 
+/// The Actions which should be permormed via the perform_actions and release_actions methods of the Browser instance,
 /// may consist of keys actions, scroll wheel actions and mouse actions. Once you construct the corresponding actions sequence
 /// it should be passed to the add_..._actions method to be added to the main Actions instance.
 #[derive(Serialize,Deserialize,Debug)]
 pub struct Actions{
     actions:Vec<serde_json::Value>,
 }
+
 impl Actions{
     pub fn new()->Actions{
         Actions{
@@ -61,7 +65,7 @@ impl Actions{
         self
     }
 }
-
+///Struct to create the key actions sequence
 #[derive(Serialize,Deserialize,Debug)]
 pub struct ActionsKeys{
     actions:Vec<serde_json::Value>,
@@ -177,7 +181,7 @@ fn spec_key_to_string(spec_key:SpecialKey)->&'static str{
             SpecialKey::NumpadSubtract=>r"\uE027",
         }
 }
-
+///Struct to create the mouse actions sequence
 #[derive(Serialize,Deserialize,Debug)]
 pub struct ActionsMouse{
     actions:Vec<serde_json::Value>,
@@ -246,6 +250,7 @@ fn mouse_button_to_string(button:MouseButton)->u8{
         MouseButton::X2Forward=>4
     }
 }
+///Struct to create the wheel actions sequence
 #[derive(Serialize,Deserialize,Debug)]
 pub struct ActionsWheel{
     actions:Vec<serde_json::Value>,
@@ -278,7 +283,7 @@ impl ActionsWheel{
     }
 }
 
-pub mod actions_tests{
+mod actions_tests{
     use super::*;
     #[test]
     #[ignore]

@@ -1,8 +1,10 @@
 [package]
-name = "rust-selenium"
+name = "selenium_webdriver"
 version = "0.1.0"
 authors = ["Sergey Bibikov <sergey.bibikov.92@mail.ru>"]
 edition = "2018"
+description = "A crate to interact with the selenium server"
+license = "Apache-2.0"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

@@ -2,6 +2,7 @@ use super::reqs::*;
 use std::collections::HashMap;
 use serde::{Serialize,Deserialize};
 
+///WebElement
 #[derive(Debug)]
 pub struct Element{
     pub(crate)element_gr_id: String,
@@ -144,6 +145,7 @@ impl Element{
 
     }
 }
+///WebElement hight,width,x-axis and y-axis
 #[derive(Deserialize,Serialize,Clone,Debug)]
 pub struct ElementRect{
     pub(crate)height:i32,
