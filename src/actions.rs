@@ -24,32 +24,36 @@ impl Actions{
         }
         self.actions = act_with_ids;
     }
-    pub fn release_focus(&mut self){
+    pub fn release_focus(&mut self)->&mut Self{
         let a = serde_json::json!({"type":"pointer", "actions":[{"type":"pointerDown","button":0}]});
         self.actions.push(a);
+        self
     }
-    pub fn ctrl_a(&mut self){
+    pub fn ctrl_a(&mut self)->&mut Self{
         let a = serde_json::from_str(r#"{"type":"key", "actions":[
                                     {"type":"keyDown","value":"\uE009"},
                                     {"type":"keyDown","value":"a"},
                                     {"type":"keyUp","value":"\uE009"}]}"#).unwrap();
         self.actions.push(a);
+        self
     }
-    pub fn ctrl_c(&mut self){
+    pub fn ctrl_c(&mut self)->&mut Self{
         let a = serde_json::from_str(r#"{"type":"key", "actions":[
                                     {"type":"keyDown","value":"\uE009"},
                                     {"type":"keyDown","value":"c"},
                                     {"type":"keyUp","value":"\uE009"}]}"#).unwrap();
         self.actions.push(a);
+        self
     }
-    pub fn ctrl_v(&mut self){
+    pub fn ctrl_v(&mut self)->&mut Self{
         let a = serde_json::from_str(r#"{"type":"key", "actions":[
                                     {"type":"keyDown","value":"\uE009"},
                                     {"type":"keyDown","value":"v"},
                                     {"type":"keyUp","value":"\uE009"}]}"#).unwrap();
         self.actions.push(a);
+        self
     }
-    pub fn add_key_actions(&mut self, key_actions:ActionsKeys){
+    pub fn add_key_actions(&mut self, key_actions:ActionsKeys)->&mut Self{
         let temp_val = serde_json::to_string(&key_actions).unwrap();
         let mut arr:Vec<u8> = temp_val.bytes().collect();
         arr.remove(0);
@@ -58,8 +62,9 @@ impl Actions{
         let temp_string = format!(r#"{{"type":"key",{}}}"#,temp_val);
         let val = serde_json::from_str(&temp_string).unwrap();
         self.actions.push(val);
+        self
     }
-    pub fn add_mouse_actions(&mut self,mouse_actions:ActionsMouse){
+    pub fn add_mouse_actions(&mut self,mouse_actions:ActionsMouse)->&mut Self{
         let temp_val = serde_json::to_string(&mouse_actions).unwrap();
         let mut arr:Vec<u8> = temp_val.bytes().collect();
         arr.remove(0);
@@ -68,8 +73,9 @@ impl Actions{
         let temp_string = format!(r#"{{"type":"pointer",{}}}"#,temp_val);
         let val = serde_json::from_str(&temp_string).unwrap();
         self.actions.push(val);
+        self
     }
-    pub fn add_wheel_actions(&mut self,wheel_actions:ActionsWheel){
+    pub fn add_wheel_actions(&mut self,wheel_actions:ActionsWheel)->&mut Self{
         let temp_val = serde_json::to_string(&wheel_actions).unwrap();
         let mut arr:Vec<u8> = temp_val.bytes().collect();
         arr.remove(0);
@@ -78,6 +84,7 @@ impl Actions{
         let temp_string = format!(r#"{{"type":"wheel",{}}}"#,temp_val);
         let val = serde_json::from_str(&temp_string).unwrap();
         self.actions.push(val);
+        self
     }
 }
 
@@ -91,32 +98,37 @@ impl ActionsKeys{
             actions: vec![],
         }
     }
-    pub fn press_key(&mut self,key:&str){
+    pub fn press_key(&mut self,key:&str)->&mut Self{
        let json = format!(r#"{{"type":"keyDown","value":"{}"}}"#,key);
        let val = serde_json::from_str(&json).unwrap();
        self.actions.push(val);
+       self
     }
-    pub fn release_key(&mut self,key:&str){
+    pub fn release_key(&mut self,key:&str)->&mut Self{
         let json = format!(r#"{{"type":"keyUp","value":"{}"}}"#,key);
        let val = serde_json::from_str(&json).unwrap();
        self.actions.push(val);
+       self
     }
-    pub fn press_special_key(&mut self,spec_key:SpecialKey){
+    pub fn press_special_key(&mut self,spec_key:SpecialKey)->&mut Self{
         let key = spec_key_to_string(spec_key);
         let json = format!(r#"{{"type":"keyDown","value":"{}"}}"#,key);
         let val = serde_json::from_str(&json).unwrap();
         self.actions.push(val);
+        self
     }
-    pub fn release_special_key(&mut self,spec_key:SpecialKey){
+    pub fn release_special_key(&mut self,spec_key:SpecialKey)->&mut Self{
         let key = spec_key_to_string(spec_key);
         let json = format!(r#"{{"type":"keyUp","value":"{}"}}"#,key);
         let val = serde_json::from_str(&json).unwrap();
         self.actions.push(val);
+        self
     }
-    pub fn pause(&mut self,duration:u32){
+    pub fn pause(&mut self,duration:u32)->&mut Self{
         let json = format!(r#"{{"type":"pause","duration":{}}}"#,duration);
         let val = serde_json::from_str(&json).unwrap();
         self.actions.push(val);
+        self
     }
 }
 fn spec_key_to_string(spec_key:SpecialKey)->&'static str{
@@ -202,32 +214,37 @@ impl ActionsMouse{
             actions: vec![],
         }
     }
-    pub fn pause(&mut self,duration:u32){
+    pub fn pause(&mut self,duration:u32)->&mut Self{
         let json = format!(r#"{{"type":"pause","duration":{}}}"#,duration);
         let val = serde_json::from_str(&json).unwrap();
         self.actions.push(val);
+        self
     }
-    pub fn press_mouse_button(&mut self,button: MouseButton){
+    pub fn press_mouse_button(&mut self,button: MouseButton)->&mut Self{
         let key = mouse_button_to_string(button);
         let json = format!(r#"{{"type":"pointerDown","button":{}}}"#,key);
         let val = serde_json::from_str(&json).unwrap();
         self.actions.push(val);
+        self
     }
-    pub fn release_mouse_button(&mut self,button: MouseButton){
+    pub fn release_mouse_button(&mut self,button: MouseButton)->&mut Self{
         let key = mouse_button_to_string(button);
         let json = format!(r#"{{"type":"pointerUp","button":{}}}"#,key);
         let val = serde_json::from_str(&json).unwrap();
         self.actions.push(val);
+        self
     }
-    pub fn move_mouse_to_point(&mut self, duration: u32, x: i32,y: i32){
+    pub fn move_mouse_to_point(&mut self, duration: u32, x: i32,y: i32)->&mut Self{
         let json = format!(r#"{{"type":"pointerMove","duration":{},"origin":"viewport","x":{},"y":{}}}"#,duration,x,y);
         let val = serde_json::from_str(&json).unwrap();
         self.actions.push(val);
+        self
     }
-    pub fn cancel_action(&mut self){
+    pub fn cancel_action(&mut self)->&mut Self{
         let json =r#"{"type":"pointerCancel"}"#;
         let val = serde_json::from_str(&json).unwrap();
         self.actions.push(val);
+        self
     }
 
 }
