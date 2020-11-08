@@ -783,29 +783,29 @@ mod tests{
         iter.next();
         iter.next();
         sess = iter.next().unwrap().to_string();}
-        browser.close_browser();
+        browser.close_browser().unwrap();
         
         assert_eq!(32,sess.len());
     }
     #[test]
     fn firefox_session() {
         let mut browser = Browser::start_session(BrowserName::Firefox,vec![]);
-        browser.close_browser();
+        browser.close_browser().unwrap();
     }
     #[test]
     fn go_to_vk() {
         let mut browser = Browser::start_session(BrowserName::Chrome, vec!["--headless"]);
-        browser.open("https://vk.com");
+        browser.open("https://vk.com").unwrap();
         let link = browser.get_link().unwrap();
-        browser.close_browser();
+        browser.close_browser().unwrap();
         assert_eq!(link,"https://vk.com/");
     }
     #[test]
     #[should_panic]
     fn close_browser() {
         let mut browser = Browser::start_session(BrowserName::Chrome, vec!["--headless"]);
-        browser.open("http://localhost:4444/wd/hub/status");
-        browser.close_browser();        
+        browser.open("http://localhost:4444/wd/hub/status").unwrap();
+        browser.close_browser().unwrap();        
         let a = browser.get_link().unwrap();
         if a.contains("invalid"){panic!("Invalid session id");}
     }
@@ -820,7 +820,7 @@ mod tests{
         {
             let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless"]);
             timeouts= br.get_timeouts().unwrap();
-            br.close_browser();
+            br.close_browser().unwrap();
         }
         assert!(timeouts.implicit==0&&timeouts.script==30000);
     }
@@ -829,7 +829,7 @@ mod tests{
         let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless"]);
         let timeouts = Timeouts::set_all(1000, 3000, 300000);
         assert!(br.set_timeouts(&timeouts)==Ok(()));
-        br.close_browser();
+        br.close_browser().unwrap();
     }
     #[test]
     fn check_timouts_init() {
@@ -846,39 +846,39 @@ mod tests{
     fn back_test() {
         let link: String;
         {let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless"]);
-        br.open("https://vk.com/");
-        br.open("https://m.facebook.com/");
-        br.back();
+        br.open("https://vk.com/").unwrap();
+        br.open("https://m.facebook.com/").unwrap();
+        br.back().unwrap();
         link = br.get_link().unwrap();
-        br.close_browser();}
+        br.close_browser().unwrap();}
         assert_eq!(link.as_str(),"https://vk.com/");
     }
     #[test]
     fn forward_test() {
         let link: String;
         {let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless"]);
-        br.open("https://vk.com/");
-        br.open("https://m.facebook.com/");
-        br.back();
+        br.open("https://vk.com/").unwrap();
+        br.open("https://m.facebook.com/").unwrap();
+        br.back().unwrap();
         br.forward();
         link = br.get_link().unwrap();        
-        br.close_browser();}
+        br.close_browser().unwrap();}
         assert_eq!(&link,"https://m.facebook.com/");
     }
     #[test]
     fn refresh_test() {
         let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless"]);
-        br.open("https://vk.com/");
+        br.open("https://vk.com/").unwrap();
         assert_eq!(br.refresh(),Ok(()));
-        br.close_browser();
+        br.close_browser().unwrap();
     }
     #[test]
     fn get_title_test() {
         let title:String;
         {let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless"]);
-        br.open("https://www.w3.org/TR/webdriver/");
+        br.open("https://www.w3.org/TR/webdriver/").unwrap();
         title =br.get_title();
-        br.close_browser();}
+        br.close_browser().unwrap();}
         assert_eq!(title,String::from("WebDriver"));
         
     }
@@ -886,9 +886,9 @@ mod tests{
     fn window_handle() {
         let handle: String;
         {let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless"]);
-        br.open("https://vk.com");
+        br.open("https://vk.com").unwrap();
         handle = br.get_window_handle();
-        br.close_browser();}
+        br.close_browser().unwrap();}
         assert!(handle.starts_with("CDwindow"));
         
     }
@@ -896,19 +896,19 @@ mod tests{
     fn switch_window(){
         let res :Result<(),String>;
         let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless"]);
-        br.open("https://vk.com");
+        br.open("https://vk.com").unwrap();
         let handle = br.get_window_handle();
         res = br.switch_to_window(handle);assert_eq!(Ok(()),res);
-        br.close_browser();
+        br.close_browser().unwrap();
     }
     #[test]
     fn get_handles() {
         let handles;
         {
             let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless"]);
-            br.open("https://vk.com");
+            br.open("https://vk.com").unwrap();
             handles = br.get_window_handles();
-            br.close_browser();
+            br.close_browser().unwrap();
         }
         let len = handles.len();
         assert_eq!(len,1);
@@ -918,9 +918,9 @@ mod tests{
         let handles;
         {
             let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless"]);
-            br.open("https://vk.com");
+            br.open("https://vk.com").unwrap();
             handles = br.close_window();
-            br.close_browser();
+            br.close_browser().unwrap();
         }
         assert_eq!(handles.len(),0);
     }
@@ -929,24 +929,24 @@ mod tests{
         let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless"]);
         let wind = br.new_window(NewWindowType::Tab);
         assert!(wind.1=="tab"&&br.get_window_handles().len()==2);
-        br.close_browser();
+        br.close_browser().unwrap();
     }
     #[test]
     fn sw_to_frame_by_id() {
         let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless"]);
-        br.open("https://bash.im");
+        br.open("https://bash.im").unwrap();
         let res = br.switch_to_frame_by_id(0);
-        br.close_browser();
+        br.close_browser().unwrap();
         assert_eq!(res,Ok(()));
 
     }
     #[test]
     fn sw_t_fr_by_el() {
         let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless"]);
-        br.open("https://vk.com");
+        br.open("https://vk.com").unwrap();
         let el = br.find_element(LocatorStrategy::CSS("#quick_login_frame")).unwrap();
         let res = br.switch_to_frame_by_element(el);
-        br.close_browser();
+        br.close_browser().unwrap();
         assert_eq!(res,Ok(()));
     }
     #[test]
@@ -954,9 +954,9 @@ mod tests{
         let el;
         {
         let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless"]);
-        br.open("https://vk.com");
+        br.open("https://vk.com").unwrap();
         el = br.find_element(LocatorStrategy::CSS("#ts_input")).unwrap();
-        br.close_browser();
+        br.close_browser().unwrap();
         }
         let tr =el.element_gr_id.contains("element"); 
         assert!(tr);
@@ -966,9 +966,9 @@ mod tests{
         let el;
         {
         let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless"]);
-        br.open("https://vk.com");
+        br.open("https://vk.com").unwrap();
         el = br.find_elements(LocatorStrategy::CSS("div")).unwrap();
-        br.close_browser();
+        br.close_browser().unwrap();
         }
         let len = el.len();
         assert!(len>2);
@@ -977,16 +977,16 @@ mod tests{
     fn sw_to_par_fr() {
         let res;
         let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless"]);
-        br.open("https://vk.com");
+        br.open("https://vk.com").unwrap();
         res = br.switch_to_parent_frame();
-        br.close_browser(); 
+        br.close_browser().unwrap(); 
         assert_eq!(res, Ok(()));
     }
     #[test]
     fn get_wind_rect() {
         let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless","--window-size=400,200"]);
         let wr = br.get_window_rect();
-        br.close_browser();
+        br.close_browser().unwrap();
         assert!(wr==WindowRect{height:200,width:400,x:0,y:0});
     }
     #[test]
@@ -994,7 +994,7 @@ mod tests{
         let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless","--window-size=400,200"]);
         let wr = WindowRect{height:600, width:1000,x:250,y:250};
         let wr_new = br.set_sindow_rect(&wr).unwrap();
-        br.close_browser();
+        br.close_browser().unwrap();
         assert_eq!(wr,wr_new);
         
     }
@@ -1002,7 +1002,7 @@ mod tests{
     fn maximize() {
         let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless","--window-size=400,200"]);
         let a = br.maximize_window().unwrap();
-        br.close_browser();
+        br.close_browser().unwrap();
         let wr = WindowRect{height:200, width:400,x:0,y:0};
         assert_eq!(a,wr);
     }
@@ -1023,16 +1023,16 @@ mod tests{
     fn fullsize() {
         let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless","--window-size=400,200"]);
         let a = br.fullscreen().unwrap();
-        br.close_browser();
+        br.close_browser().unwrap();
         assert!(a.x==0&&a.y==0);
     }
 
     #[test]
     fn src() {
         let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless","--window-size=400,200"]);
-        br.open("http://localhost:4444/wd/hub/status");
+        br.open("http://localhost:4444/wd/hub/status").unwrap();
         let a = br.source();
-        br.close_browser();
+        br.close_browser().unwrap();
         assert!(a.contains("html")&&a.contains("head"))
     }
 
@@ -1042,60 +1042,60 @@ mod tests{
         let res = vec!["5",r#""Hello""#];
         let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless"]);
         let res = br.execute_sync(script, &res).unwrap();
-        br.close_browser();
+        br.close_browser().unwrap();
         assert!(res.contains("5"));
     }
     
     #[test]
     fn cookies() {
         let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless"]);
-        br.open("https://vk.com");
+        br.open("https://vk.com").unwrap();
         let cook = br.get_all_cookies();
-        br.close_browser();
+        br.close_browser().unwrap();
         assert!(cook.len()>1);
     }
 
     #[test]
     fn get_cookie() {
         let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless"]);
-        br.open("https://vk.com");
+        br.open("https://vk.com").unwrap();
         let c = br.get_cookie("tmr_lvidTS").unwrap();
-        br.close_browser();
+        br.close_browser().unwrap();
         assert_eq!(c.httpOnly,false);
     }
 
     #[test]
     fn add_cookie() {
         let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless"]);
-        br.open("https://vk.com");
+        br.open("https://vk.com").unwrap();
         let cook = Cookie::new_all(String::from(""), 1000, String::from("Lax"), false, String::from("tmr_detect"), String::from(""), false, String::from("0%7C1604223632022"));
         assert_eq!(br.add_cookie(cook),Ok(()));
-        br.close_browser();
+        br.close_browser().unwrap();
     }
 
     #[test]
     fn a_del_all_cook() {
         let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless"]);
-        br.open("https://vk.com");
+        br.open("https://vk.com").unwrap();
         br.delete_all_cookies().unwrap();
         let cook = br.get_all_cookies();
-        br.close_browser();
+        br.close_browser().unwrap();
         assert_eq!(cook.len(),0);
     }
     #[test]
     fn del_cookie() {
         let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless"]);
-        br.open("https://vk.com");
+        br.open("https://vk.com").unwrap();
         let r = br.delete_cookie("remixjsp");
-        br.close_browser();
+        br.close_browser().unwrap();
         assert!(r==Ok(()));
     }
     #[test]
     fn screensh() {
         let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless","--window-size=7680,4320"]);
-        br.open("https://vk.com");
+        br.open("https://vk.com").unwrap();
         br.take_screenshot("screen.png").unwrap();
-        br.close_browser();
+        br.close_browser().unwrap();
         let arr=std::fs::read("screen.png").unwrap().len();
         assert!(arr>0);
         std::fs::remove_file("screen.png").unwrap();
@@ -1103,10 +1103,10 @@ mod tests{
     #[test]
     fn el_screensh() {
         let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless","--window-size=800,600"]);
-        br.open("https://vk.com");
+        br.open("https://vk.com").unwrap();
         let el = br.find_element(LocatorStrategy::CSS("#ts_input")).unwrap();
         br.take_element_screenshot(&el,"element.png").unwrap();
-        br.close_browser();
+        br.close_browser().unwrap();
         let arr=std::fs::read("element.png").unwrap().len();
         assert!(arr>0);
         std::fs::remove_file("element.png").unwrap();
@@ -1114,12 +1114,12 @@ mod tests{
     #[test]
     fn pr_page() {
         let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless","--window-size=2400,1200"]);
-        br.open("https://vk.com");
+        br.open("https://vk.com").unwrap();
         let mut p  = PrintSettings::default();
         p.set_orientation(Orientation::LANDSCAPE);
         p.set_pages(vec![1,2]);
         br.print(&p, "page.pdf").unwrap();
-        br.close_browser();
+        br.close_browser().unwrap();
         let arr=std::fs::read("page.pdf").unwrap().len();
         assert!(arr>0);
         std::fs::remove_file("page.pdf").unwrap();
@@ -1128,166 +1128,166 @@ mod tests{
     #[test]
     fn alerts() {
         let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless"]);
-        br.open("https://vk.com");
+        br.open("https://vk.com").unwrap();
         let resp = br.dismiss_alert().is_err();
         let resp2 = br.allow_alert().is_err();
-        br.close_browser();
+        br.close_browser().unwrap();
         assert!(resp&&resp2);
     }
     #[test]
     fn get_send_alert_text() {
         let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless"]);
-        br.open("https://vk.com");
+        br.open("https://vk.com").unwrap();
         let resp = br.get_alert_text().is_err();
         let resp2 = br.send_alert_text("I am the text").is_err();
-        br.close_browser();
+        br.close_browser().unwrap();
         assert!(resp&&resp2);
     }
     #[test]
     fn active_el() {
         let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless"]);
-        br.open("https://vk.com");
+        br.open("https://vk.com").unwrap();
         let a = br.get_active_element().unwrap();
-        br.close_browser();
+        br.close_browser().unwrap();
         assert!(a.element_gr_id.contains("element"));
     }
     #[test]
     fn find_sub_el() {
         let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless","--window-size=400,200"]);
-        br.open("https://vk.com");
+        br.open("https://vk.com").unwrap();
         let par_el= br.find_element(LocatorStrategy::CSS("#top_nav")).unwrap();
         let a = par_el.find_element_from_self(LocatorStrategy::CSS(".HeaderNav__item")).unwrap();
-        br.close_browser();
+        br.close_browser().unwrap();
         assert!(a.element_gr_id.contains("element"));
     }
     #[test]
     fn sub_els() {
         let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless","--window-size=400,200"]);
-        br.open("https://bash.im");
+        br.open("https://bash.im").unwrap();
         let par_el= br.find_element(LocatorStrategy::CSS("section.quotes")).unwrap();
         let a = par_el.find_elements_from_self(LocatorStrategy::CSS(".quote")).unwrap();
-        br.close_browser();
+        br.close_browser().unwrap();
         let len  = a.len();
         assert!(len>2);
     }
     #[test]
     fn is_sel() {
         let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless","--window-size=400,200"]);
-        br.open("https://vk.com");
+        br.open("https://vk.com").unwrap();
         let el= br.find_element(LocatorStrategy::CSS("#ts_input")).unwrap();
         let res = el.is_selected().unwrap();
-        br.close_browser();
+        br.close_browser().unwrap();
         assert!(res==false);
     }
     #[test]
     fn get_arrtib() {
         let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless","--window-size=400,200"]);
-        br.open("https://vk.com");
+        br.open("https://vk.com").unwrap();
         let el= br.find_element(LocatorStrategy::CSS(".placeholder_content")).unwrap();
         let res = el.get_attribute("aria-hidde").unwrap();
         let res2 = el.get_attribute("aria-hidden").unwrap();
-        br.close_browser();
+        br.close_browser().unwrap();
         assert!(res.as_str()=="null");
         assert!(res2.as_str()=="true");
     }
     #[test]
     fn get_property() {
         let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless","--window-size=400,200"]);
-        br.open("https://vk.com");
+        br.open("https://vk.com").unwrap();
         let el= br.find_element(LocatorStrategy::CSS("#index_login_form")).unwrap();
         let res_len = el.get_property("attributes").unwrap().len();
         let res_null = el.get_property("attributes2").unwrap();
-        br.close_browser();
+        br.close_browser().unwrap();
         assert!(res_len>5000&&res_null.as_str()=="null");
     }
     #[test]
     fn get_css_property() {
         let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless","--window-size=400,200"]);
-        br.open("https://vk.com");
+        br.open("https://vk.com").unwrap();
         let el= br.find_element(LocatorStrategy::CSS("#index_login_form")).unwrap();
         let res = el.get_css_value("color").unwrap().contains("rgba");
-        br.close_browser();
+        br.close_browser().unwrap();
         assert!(res);
     }
     #[test]
     fn get_el_text() {
         let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless","--window-size=400,200"]);
-        br.open("https://vk.com");
+        br.open("https://vk.com").unwrap();
         let el= br.find_element(LocatorStrategy::CSS("#index_login_form")).unwrap();
         let res = el.get_element_text().unwrap().contains("error");
-        br.close_browser();
+        br.close_browser().unwrap();
         assert!(!res);
     }
     #[test]
     fn get_el_tag() {
         let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless","--window-size=400,200"]);
-        br.open("https://vk.com");
+        br.open("https://vk.com").unwrap();
         let el= br.find_element(LocatorStrategy::CSS("#index_login_form")).unwrap();
         let res = el.get_tag_name().unwrap().contains("error");
-        br.close_browser();
+        br.close_browser().unwrap();
         assert!(!res);
     }
     #[test]
     fn get_el_rect() {
         let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless","--window-size=400,200"]);
-        br.open("https://vk.com");
+        br.open("https://vk.com").unwrap();
         let el= br.find_element(LocatorStrategy::CSS("#index_login_form")).unwrap();
         let res = el.get_element_rect().unwrap();
-        br.close_browser();
+        br.close_browser().unwrap();
         assert!(res.height==140);
     }
     #[test]
     fn el_is_enabled() {
         let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless","--window-size=400,200"]);
-        br.open("https://vk.com");
+        br.open("https://vk.com").unwrap();
         let el= br.find_element(LocatorStrategy::CSS("#index_login_form")).unwrap();
         let res = el.is_enabled().unwrap();
-        br.close_browser();
+        br.close_browser().unwrap();
         assert!(res);
     }
     #[test]
     fn get_comp_role() {
         let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless","--window-size=400,200"]);
-        br.open("https://vk.com");
+        br.open("https://vk.com").unwrap();
         let el= br.find_element(LocatorStrategy::CSS("#index_login_form")).unwrap();
         let res = el.get_computed_role();
         let res2 = el.get_computed_label();
         dbg!(&res);
         dbg!(&res2);
-        br.close_browser();
+        br.close_browser().unwrap();
         assert!(res.is_err()&&res2.is_err());
     }
     #[test]
     fn click_test() {
         let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless","--window-size=400,200"]);
-        br.open("https://vk.com");
+        br.open("https://vk.com").unwrap();
         let el= br.find_element(LocatorStrategy::CSS("#index_login_form")).unwrap();
         let res = el.click();
-        br.close_browser();
+        br.close_browser().unwrap();
         assert_eq!(res,Ok(()))
     }
     #[test]
     fn el_send_k() {
         let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless","--window-size=400,200"]);
-        br.open("https://vk.com");
+        br.open("https://vk.com").unwrap();
         let el= br.find_element(LocatorStrategy::CSS("#ts_input")).unwrap();
         el.send_keys("Sup!").unwrap();
-        br.close_browser();
+        br.close_browser().unwrap();
     }
     #[test]
     fn el_clear() {
         let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless","--window-size=400,200"]);
-        br.open("https://vk.com");
+        br.open("https://vk.com").unwrap();
         let el= br.find_element(LocatorStrategy::CSS("#ts_input")).unwrap();
         let _ = el.send_keys("Sup!");
         el.clear_element().unwrap();
-        br.close_browser();
+        br.close_browser().unwrap();
     }
     #[test]
     fn rel_actions() {
         let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless","--window-size=400,200"]);
         let res1 = br.release_actions();
-        br.close_browser();
+        br.close_browser().unwrap();
         let res2 = br.release_actions();
         assert!(res1.is_ok()&&res2.is_err());
     }
@@ -1301,10 +1301,10 @@ mod tests{
         actions_keys.press_key("b");
         actions.add_key_actions(actions_keys);
         let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless","--window-size=1000,500"]);
-        br.open("https:vk.com/");
+        br.open("https:vk.com/").unwrap();
         br.find_element(LocatorStrategy::CSS("#ts_input")).unwrap().click().unwrap();
         let res = br.perform_actions(actions);
-        br.close_browser();
+        br.close_browser().unwrap();
         assert!(res.is_ok());
     }
     #[test]
@@ -1317,10 +1317,10 @@ mod tests{
         actions_keys.press_mouse_button(MouseButton::Right);
         actions.add_mouse_actions(actions_keys);
         let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless","--window-size=1000,500"]);
-        br.open("https:vk.com/");
+        br.open("https:vk.com/").unwrap();
         let res = br.perform_actions(actions);
         let res2 = br.release_actions();
-        br.close_browser();
+        br.close_browser().unwrap();
         assert!(res.is_ok()&&res2.is_ok());
     }
     #[test]
@@ -1340,10 +1340,10 @@ mod tests{
         actions.add_key_actions(keys);
         actions.add_mouse_actions(mouse);
         let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless","--window-size=1000,500"]);
-        br.open("https:vk.com/");
+        br.open("https:vk.com/").unwrap();
         let res = br.perform_actions(actions);
         let res2 = br.release_actions();
-        br.close_browser();
+        br.close_browser().unwrap();
         assert!(res.is_ok()&&res2.is_ok());       
     }
     #[test]
@@ -1352,10 +1352,10 @@ mod tests{
         let mut wheel = ActionsWheel::new();
         wheel.scroll(0, 0, 100, 100).scroll(0, 0, 0, 1000);
         let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless","--window-size=600,400"]);
-        br.open("https://yandex.ru/");
+        br.open("https://yandex.ru/").unwrap();
         actions.add_wheel_actions(wheel);
         let res = br.perform_actions(actions);
-        br.close_browser();
+        br.close_browser().unwrap();
         assert!(res.is_ok());
     }
     #[test]
@@ -1363,20 +1363,20 @@ mod tests{
         let mut actions = Actions::new();
         let mut mouse = ActionsMouse::new();
         let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless","--window-size=600,400"]);
-        br.open("https://vk.com");
+        br.open("https://vk.com").unwrap();
         let el = br.find_element(LocatorStrategy::CSS("#ts_input")).unwrap();    
         mouse.move_mouse_to_element(&el).press_mouse_button(MouseButton::Left);
         actions.add_mouse_actions(mouse);
         let res = br.perform_actions(actions);
         let res2 = br.release_actions();
-        br.close_browser();
+        br.close_browser().unwrap();
         assert!(res.is_ok());
         assert!(res2.is_ok());
     }
     #[test]
     fn dranddrop() {
         let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless","--window-size=1500,800"]);
-        br.open("http://webdriveruniversity.com/Actions/index.html");
+        br.open("http://webdriveruniversity.com/Actions/index.html").unwrap();
         let mut actions = Actions::new();
         let mut mouse = ActionsMouse::new();
          let el = br.find_element(LocatorStrategy::CSS("div#draggable")).unwrap();
@@ -1385,7 +1385,7 @@ mod tests{
         actions.add_mouse_actions(mouse);
         let res = br.perform_actions(actions);
         let res2 = br.release_actions();
-        br.close_browser();
+        br.close_browser().unwrap();
         assert!(res.is_ok());
         assert!(res2.is_ok());        
     }
