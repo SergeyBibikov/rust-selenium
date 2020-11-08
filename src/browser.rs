@@ -262,6 +262,18 @@ impl Browser{
         })
     }
     ///If the locator matches several elements, it returns the first one
+    /// 
+    /// # Examples
+    /// ```
+    /// # use selenium_webdriver::*;
+    /// 
+    ///let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless"]);
+    ///br.open("https://vk.com").unwrap();
+    ///let el = br.find_element(LocatorStrategy::CSS("#ts_input")).unwrap();
+    ///let res = el.click(); 
+    ///br.close_browser().unwrap();
+    ///assert!(res.is_ok()); 
+    /// ```
     pub fn find_element(&self,loc_strategy:LocatorStrategy)->Result<Element,String>{
         let body = body_for_find_element(loc_strategy);
         let resp = send_and_read_body(Method::POST, &self.element_url, cont_length_header(&body), &body);
@@ -1129,7 +1141,7 @@ mod tests{
     }
 
     #[test]
-    fn a_del_all_cook() {
+    fn z_del_all_cook() {
         let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless"]);
         br.open("https://vk.com").unwrap();
         br.delete_all_cookies().unwrap();
@@ -1138,7 +1150,7 @@ mod tests{
         assert_eq!(cook.len(),0);
     }
     #[test]
-    fn del_cookie() {
+    fn t_del_cookie() {
         let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless"]);
         br.open("https://vk.com").unwrap();
         let r = br.delete_cookie("remixjsp");
