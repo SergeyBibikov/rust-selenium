@@ -7,9 +7,26 @@ use super::element::*;
 /// The Actions which should be permormed via the perform_actions and release_actions methods of the Browser instance,
 /// may consist of keys actions, scroll wheel actions and mouse actions. Once you construct the corresponding actions sequence
 /// it should be passed to the add_..._actions method to be added to the main Actions instance.
+/// When constructing complex scenarious with multiple input sources(key,mouse,wheel), you need to use pauses
+/// to syncronize actions and achieve more predictable result
+/// (see "https://www.w3.org/TR/webdriver/#actions" for more details).
+/// 
+/// The order of the adding input source to Actions may also influence the outcome.
+/// 
+/// # Examples
+/// ```
+/// # use selenium_webdriver::*;
+/// let mut mouse = ActionsMouse::new();
+/// let mut keys = ActionsKeys::new();
+/// mouse.press_mouse_button(MouseButton::Left).pause(0).release_mouse_button(MouseButton::Left);
+/// keys.pause(0).press_special_key(SpecialKey::Enter);
+/// let mut actions = Actions::new();
+/// actions.add_mouse_actions(mouse).add_key_actions(keys);
+/// ```
+
 #[derive(Serialize,Deserialize,Debug)]
 pub struct Actions{
-    actions:Vec<serde_json::Value>,
+   pub(crate) actions:Vec<serde_json::Value>,
 }
 
 impl Actions{
@@ -31,6 +48,18 @@ impl Actions{
         }
         self.actions = act_with_ids;
     }
+    /// Add the key actions sequence to the global list of actions
+    /// 
+    /// # Examples
+    /// 
+    /// ```
+    /// # use selenium_webdriver::*;
+    /// 
+    /// let mut keys = ActionsKeys::new();
+    /// keys.press_special_key(SpecialKey::ShiftLeft).press_key("a");
+    /// let mut actions = Actions::new();
+    /// actions.add_key_actions(keys);
+    /// ```
     pub fn add_key_actions(&mut self, key_actions:ActionsKeys)->&mut Self{
         let temp_val = serde_json::to_string(&key_actions).unwrap();
         let mut arr:Vec<u8> = temp_val.bytes().collect();
@@ -68,7 +97,7 @@ impl Actions{
 ///Struct to create the key actions sequence
 #[derive(Serialize,Deserialize,Debug)]
 pub struct ActionsKeys{
-    actions:Vec<serde_json::Value>,
+    pub(crate) actions:Vec<serde_json::Value>,
 }
 impl ActionsKeys{
     pub fn new()->ActionsKeys{
@@ -184,7 +213,7 @@ fn spec_key_to_string(spec_key:SpecialKey)->&'static str{
 ///Struct to create the mouse actions sequence
 #[derive(Serialize,Deserialize,Debug)]
 pub struct ActionsMouse{
-    actions:Vec<serde_json::Value>,
+    pub(crate) actions:Vec<serde_json::Value>,
 }
 impl ActionsMouse{
     pub fn new()->ActionsMouse{
@@ -233,6 +262,7 @@ impl ActionsMouse{
         self.actions.push(val);
         self
     }
+    ///Drag one element and drop it on another one.
     pub fn drag_n_drop(&mut self,elem_to_drag:Element,elem_destination:Element)->&mut Self{
         self.move_mouse_to_element(&elem_to_drag)
         .press_mouse_button(MouseButton::Left)
@@ -253,7 +283,7 @@ fn mouse_button_to_string(button:MouseButton)->u8{
 ///Struct to create the wheel actions sequence
 #[derive(Serialize,Deserialize,Debug)]
 pub struct ActionsWheel{
-    actions:Vec<serde_json::Value>,
+    pub(crate) actions:Vec<serde_json::Value>,
 }
 impl ActionsWheel{
     pub fn new()->ActionsWheel{
@@ -267,6 +297,14 @@ impl ActionsWheel{
         self.actions.push(val);
         self
     }
+    ///Scroll by number of pixels (x-axis and y-axis) from a starting position within the viewport.
+    ///The value of pixels to scroll may be both positive and negative.
+    /// # Examples
+    /// ```
+    /// # use selenium_webdriver::*;
+    /// let mut wheel = ActionsWheel::new();
+    /// wheel.scroll(0, 0, 100, 100).scroll(100, 100, 100, 100);
+    /// ```
     pub fn scroll(&mut self,
                   init_x_position:i32,
                   init_y_position:i32,
@@ -286,14 +324,14 @@ impl ActionsWheel{
 mod actions_tests{
     use super::*;
     #[test]
-    #[ignore]
-    fn dummy_test() {
+    fn actions_vec_lens() {
         let mut ac = Actions::new();
         let mut ma = ActionsMouse::new();
         ma.press_mouse_button(MouseButton::Left);
         ma.pause(5);
         ma.press_mouse_button(MouseButton::Right);
+        assert!(ma.actions.len()==3);
         ac.add_mouse_actions(ma);
-        dbg!(&ac);
+        assert!(ac.actions.len()==1);
         }
 }

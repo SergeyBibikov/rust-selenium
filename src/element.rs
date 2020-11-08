@@ -10,6 +10,7 @@ pub struct Element{
     pub(crate)element_url: String,
 }
 impl Element{
+    ///Returns the first child element which is found using the locator.
     pub fn find_element_from_self(&self,locator:LocatorStrategy)->Result<Element,String>{
         let url = format!("{}/element",self.element_url);
         let body = body_for_find_element(locator);
@@ -25,6 +26,7 @@ impl Element{
             element_url: format!("{}/element/{}",el_url,res.1.clone()),
         })
     }
+    ///Returns all children elements which are found using the locator.
     pub fn find_elements_from_self(&self,locator:LocatorStrategy)->Result<Vec<Element>,String>{
         let mut result = vec![];
         let url = format!("{}/elements",self.element_url);
@@ -91,6 +93,7 @@ impl Element{
         let map: HashMap<&str,String> = serde_json::from_str(&resp).unwrap();
         Ok((*map.get("value").unwrap()).clone())
     }
+    ///Returns the element's size(hight,width) and position(x-axis and y-axis)
     pub fn get_element_rect(&self)->Result<ElementRect,String>{
         let url = format!("{}/rect",self.element_url);
         let resp = send_and_read_body(Method::GET, &url, vec![], "");
@@ -114,6 +117,7 @@ impl Element{
         let map: HashMap<&str,String> = serde_json::from_str(&resp).unwrap();
         Ok((*map.get("value").unwrap()).clone())
     }
+    ///See above
     pub fn get_computed_label(&self)->Result<String,String>{
         let url = format!("{}/computedlabel",self.element_url);
         let resp = send_and_read_body(Method::GET, &url, vec![], "");
@@ -129,6 +133,7 @@ impl Element{
         Ok(())
 
     }
+    ///Clears any element text
     pub fn clear_element(&self)->Result<(),String>{
         let body = r#"{}"#;
         let url = format!("{}/clear",self.element_url);
@@ -136,6 +141,16 @@ impl Element{
         if resp.contains("error"){return Err(resp);}
         Ok(())
     }
+    ///Sends the text to the element if it is possibe for the element, otherwise, returns error
+    /// # Examples
+    /// ```
+    /// # use selenium_webdriver::*;
+    /// let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless","--window-size=400,200"]);
+    /// br.open("https://vk.com").unwrap();
+    /// let el= br.find_element(LocatorStrategy::CSS("#ts_input")).unwrap();
+    /// el.send_keys("Sup!").unwrap();
+    /// br.close_browser().unwrap();
+    /// ```
     pub fn send_keys(&self,message:&str)->Result<(),String>{
         let body = format!(r#"{{"text":"{}"}}"#,message);
         let url = format!("{}/value",self.element_url);

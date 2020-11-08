@@ -1417,7 +1417,7 @@ mod tests{
     fn wheel_ac() {
         let mut actions = Actions::new();
         let mut wheel = ActionsWheel::new();
-        wheel.scroll(0, 0, 100, 100).scroll(0, 0, 0, 1000);
+        wheel.scroll(0, 0, 100, 100).scroll(100, 100, 100, 100);
         let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless","--window-size=600,400"]);
         br.open("https://yandex.ru/").unwrap();
         actions.add_wheel_actions(wheel);
