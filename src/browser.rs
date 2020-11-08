@@ -63,6 +63,12 @@ impl Browser{
     ///The only method to construct the Browser instance. Currently, the args are supported for chrome,
     /// while for firefox they will be ignored. Proper Chrome and Firefox options handling will be
     /// added in future releases. 
+    /// # Examples
+    /// ```
+    /// # use selenium_webdriver::*;
+    /// let mut browser = Browser::start_session(BrowserName::Chrome,vec!["--headless"]);
+    /// browser.close_browser();
+    /// ```
     pub fn start_session(browser: BrowserName, args:Vec<&str>)->Browser{
         let req_body = create_session_body_json(browser,args);
         let headers = vec![format!("Content-Length: {}",req_body.len()+2)];
@@ -149,9 +155,11 @@ impl Browser{
         if resp.contains("error"){return Err(resp);}
         Ok(())
     }
-    pub fn forward(&self){
+    pub fn forward(&self)->Result<(),String>{
         let body = r#"{"forward":true}"#;
-        send_request(Method::POST,&self.forward_url, cont_length_header(&body), &body).unwrap();
+        let resp = send_request(Method::POST,&self.forward_url, cont_length_header(&body), &body).unwrap();
+        if resp.contains("error"){return Err(resp);}
+        Ok(())
     }
     pub fn refresh(&self)->Result<(),&str>{
         let body = r#"{"refresh":true}"#;
@@ -164,20 +172,27 @@ impl Browser{
         }
         Ok(())
     }
-    pub fn get_title(&self)->String{
+    ///Returns the title of the current tab
+    pub fn get_title(&self)->Result<String,String>{
         let json = resp_body(send_request(Method::GET, &self.title_url, vec![], "").unwrap()).unwrap();
-        parse_value(&json).replace("\"","")
+        if json.contains("error"){return Err(json);}    
+        Ok(parse_value(&json).replace("\"",""))
     }
-    pub fn get_window_handle(&self)->String{
+    ///Returns the handle of the current window, which later may be used to switch to this window.
+    pub fn get_window_handle(&self)->Result<String,String>{
         let resp = send_and_read_body(Method::GET, &self.window_url, vec![], "");
-        parse_value(&resp).replace("\"","")
+        if resp.contains("error"){return Err(resp);}
+        Ok(parse_value(&resp).replace("\"",""))
     }
-    pub fn get_window_handles(&self)->Vec<String>{
+    ///Returns the handles of all open windows and tabs
+    pub fn get_window_handles(&self)->Result<Vec<String>,String>{
        let resp = send_and_read_body(Method::GET, &self.window_handles_url, vec![], "");
+       if resp.contains("error"){return Err(resp);}
        let resp = parse_value(&resp);
        let res:Vec<String> = serde_json::from_str(&resp).unwrap();
-       res
+       Ok(res)
     }
+    ///Switches to the window with the passed id
     pub fn switch_to_window(&self, window_id: String)->Result<(),String>{
         let body = format!(r#"{{"handle":"{}"}}"#,window_id);
         let resp = send_and_read_body(Method::POST, &self.window_url, cont_length_header(&body), &body);
@@ -185,24 +200,30 @@ impl Browser{
             Ok(())
         }else{Err(resp)}
     }
-    pub fn new_window(&self, window_type: NewWindowType)->(String,String){
+    ///Opens a new window or a new tab depending on the window_type
+    pub fn new_window(&self, window_type: NewWindowType)->Result<(String,String),String>{
         let body = match window_type{
             NewWindowType::Tab=>r#"{"type":"tab"}"#,
             NewWindowType::Window=>r#"{"type":"window"}"#,
         };
         let resp=send_and_read_body(Method::POST, &self.window_new_url, cont_length_header(&body), &body);
+        if resp.contains("error"){return Err(resp);}
         let resp = parse_value(&resp);
         let map: HashMap<&str,String> = serde_json::from_str(&resp).unwrap();
         let handle = map.get("handle").unwrap().clone();
         let wtype = map.get("type").unwrap().clone();
-        (handle,wtype)
+        Ok((handle,wtype))
     }
-    pub fn close_window(&self)->Vec<String>{
+    ///Closes the window and returns the vector of the remaining window handles
+    pub fn close_window(&self)->Result<Vec<String>,String>{
        let resp = send_and_read_body(Method::DELETE, &self.window_url, vec![], "");
+       if resp.contains("error"){return Err(resp);}
        let resp = parse_value(&resp);
        let res:Vec<String> = serde_json::from_str(&resp).unwrap();
-       res        
+       Ok(res)
     }
+    ///Switches to the frame with a given id. For instance, if there are 4 frames and you wish to switch to the second one,
+    /// you should call this method like this - switch_to_frame_by_id(1).
     pub fn switch_to_frame_by_id(&self, id: u64)->Result<(),String>{
         let body = format!(r#"{{"id":{}}}"#,id);
         let resp = send_and_read_body(Method::POST, &self.frame_url, cont_length_header(&body), &body);
@@ -240,6 +261,7 @@ impl Browser{
             element_url: format!("{}/element/{}",self.session_url,res.1.clone()),
         })
     }
+    ///If the locator matches several elements, it returns the first one
     pub fn find_element(&self,loc_strategy:LocatorStrategy)->Result<Element,String>{
         let body = body_for_find_element(loc_strategy);
         let resp = send_and_read_body(Method::POST, &self.element_url, cont_length_header(&body), &body);
@@ -272,11 +294,14 @@ impl Browser{
         }
         Ok(result)
     }
-    pub fn get_window_rect(&self)->WindowRect{
+    ///Returns the WindowRect instance which contains the information about the position and size of the current window
+    pub fn get_window_rect(&self)->Result<WindowRect,String>{
         let resp = send_and_read_body(Method::GET, &self.window_rect_url, vec![], "");
+        if resp.contains("error"){return Err(resp);}
         let map:HashMap<&str,WindowRect> = serde_json::from_str(&resp).unwrap();
-        map.get("value").unwrap().clone()
+        Ok(map.get("value").unwrap().clone())
     }
+    ///Allow to resize the window and change it's position
     pub fn set_sindow_rect(&self, window_rect:&WindowRect)->Result<WindowRect,String>{
         let body = serde_json::to_string(window_rect).unwrap();
         let resp = send_and_read_body(Method::POST, &self.window_rect_url, cont_length_header(&body), &body);
@@ -317,20 +342,25 @@ impl Browser{
             Ok(serde_json::from_str(&resp).unwrap())
         } else {Err(resp)}
     }
-    pub fn source(&self)->String{
+    ///Returns the page source code
+    pub fn source(&self)->Result<String,String>{
         let resp = send_and_read_body(Method::GET, &self.source_url, vec![], "");
+        if resp.contains("error"){return Err(resp);}
         let map:HashMap<&str,String> = serde_json::from_str(&resp).unwrap();
-        map.get("value").unwrap().clone()
+        Ok(map.get("value").unwrap().clone())
     }
-    pub fn get_all_cookies(&self)->Vec<Cookie>{
+    ///Return the vector with all the cookies that the browser is holding at the moment
+    pub fn get_all_cookies(&self)->Result<Vec<Cookie>,String>{
         let mut result: Vec<Cookie> = vec![];
         let resp = send_and_read_body(Method::GET, &self.cookie_url, vec![], "");
+        if resp.contains("error"){return Err(resp);}
         let map:HashMap<&str,Vec<serde_json::Value>> = serde_json::from_str(&resp).unwrap();
         for v in map.get("value").unwrap(){
             result.push(from_value_to_cookie(v));
         }  
-        result   
+        Ok(result)
     }
+    ///Returns the information on a particular cookie
     pub fn get_cookie(&self,cookie_name:&str)->Result<Cookie,String>{
         let url = format!("{}/{}",self.cookie_url,cookie_name);
         let resp = send_and_read_body(Method::GET, &url, vec![], "");
@@ -365,6 +395,7 @@ impl Browser{
         }
         Err(resp)
     }
+    ///The path should be absolute with the extension
     pub fn take_screenshot(&self,path:&str)->Result<(),String>{
         if let Ok(resp) = send_request_screensh(Method::GET, &self.screenshot_url, vec![], ""){
              if let Ok(new) = base64::decode(resp){
@@ -441,6 +472,21 @@ impl Browser{
         if resp.contains("error"){return Err(resp);}
         Ok(())
     }
+    /// Pls see the Actions struct page to learn how to properly construct the Actions instance. 
+    /// # Examples
+    /// ```
+    /// # use selenium_webdriver::*;
+    /// let mut actions = Actions::new();
+    /// let mut actions_keys = ActionsKeys::new();
+    /// actions_keys.press_special_key(SpecialKey::ShiftLeft);
+    /// actions_keys.press_key("a");
+    /// actions.add_key_actions(actions_keys);
+    /// let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless","--window-size=1000,500"]);
+    /// br.open("https:vk.com/").unwrap();
+    /// br.find_element(LocatorStrategy::CSS("#ts_input")).unwrap().click().unwrap();
+    /// br.perform_actions(actions);
+    /// br.close_browser().unwrap();
+    /// ``` 
     pub fn perform_actions(&self,actions:Actions)->Result<(),String>{
         let mut actions = actions;
         actions.set_ids();
@@ -449,8 +495,9 @@ impl Browser{
         if resp.contains("error"){return Err(resp);}
         Ok(())
     }
+    ///Releases all the actions present in the current session's internal state.
     ///While the key actions are performed just after calling the perform_actions method,
-    ///for instance, mouse actions are performed only after callinf the release_actions method
+    ///for instance, mouse actions are performed only after calling this method.
     pub fn release_actions(&self)->Result<(),String>{
         let resp = send_and_read_body(Method::DELETE, &self.actions_url, vec![], "");
         if resp.contains("error"){return Err(resp);}
@@ -622,7 +669,7 @@ impl Default for Cookie{
         }
     }
 }
-///Struct to manage session implicit, page load and script timeouts
+///Struct to manage the session's implicit, page load and script timeouts
 #[allow(non_snake_case)]
 #[derive(Serialize,Deserialize,Debug,PartialEq)]
 pub struct Timeouts{
@@ -639,12 +686,12 @@ impl Timeouts{
             script
         }
     }
-    ///Instantiates the Timeouts with all fields == 0
+    ///Instantiates the Timeouts with default timouts of a chrome session
     pub fn new ()->Timeouts{
         Timeouts{
             implicit:0,
-            pageLoad: 0,
-            script:0,
+            pageLoad: 300000,
+            script: 30000,
         }
     }
     pub fn set_implicit(&mut self,implicit:u32){
@@ -685,13 +732,17 @@ impl PrintSettings{
             Orientation::LANDSCAPE=>String::from("landscape"),
         };
     }
+    ///Should be between 0.1 and 2.0 inclusively
     pub fn set_scale(&mut self,scale:f32){
         if scale<0.1||scale>2.0{panic!("The condotion (0.1<=scale<= 2.0) is not fulfilled");}
         self.scale=scale;}
-    pub fn set_background(&mut self){}
+    ///Flags to include the background or not
+    pub fn set_background(&mut self,background: bool){self.background=background;}
     pub fn set_page(&mut self,page:Page){self.page=page;}
     pub fn set_margin(&mut self,margin:Margin){self.margin=margin;}
+    ///Flags whether the webpage should be shrunk if it does not fit the print page
     pub fn set_shrink_to_fit(&mut self,shr_to_fit:bool){self.shrinkToFit = shr_to_fit;}
+    ///Sets the page range for printing
     pub fn set_pages(&mut self,pages:Vec<u32>){self.pages=pages;}
 }
 
@@ -709,6 +760,8 @@ impl Default for PrintSettings{
     }
 }
 ///One of the PrintSettings fields
+/// 
+/// Includes the info about the page size
 #[derive(Serialize,Deserialize,Debug)]
 pub struct Page{
     width:f32,
@@ -733,7 +786,9 @@ impl Default for Page{
         Page{width:21.59,height:27.94}
     }
 }
-///One of the PrintSettings fields
+/// One of the PrintSettings fields
+/// 
+/// Includes the info on margin sizes
 #[derive(Serialize,Deserialize,Debug)]
 pub struct Margin{
     top:u32,
@@ -834,11 +889,11 @@ mod tests{
     #[test]
     fn check_timouts_init() {
         let mut t = Timeouts::new();
-        assert_eq!(t,Timeouts{implicit:0,pageLoad:0,script:0});
+        assert_eq!(t,Timeouts{implicit:0,pageLoad:300000,script:30000});
         t.set_implicit(1);
-        assert_eq!(t,Timeouts{implicit:1,pageLoad:0,script:0});
+        assert_eq!(t,Timeouts{implicit:1,pageLoad:300000,script:30000});
         t.set_page_load(1);
-        assert_eq!(t,Timeouts{implicit:1,pageLoad:1,script:0});
+        assert_eq!(t,Timeouts{implicit:1,pageLoad:1,script:30000});
         t.set_script(1);
         assert_eq!(t,Timeouts{implicit:1,pageLoad:1,script:1});
     }
@@ -860,7 +915,7 @@ mod tests{
         br.open("https://vk.com/").unwrap();
         br.open("https://m.facebook.com/").unwrap();
         br.back().unwrap();
-        br.forward();
+        br.forward().unwrap();
         link = br.get_link().unwrap();        
         br.close_browser().unwrap();}
         assert_eq!(&link,"https://m.facebook.com/");
@@ -877,7 +932,7 @@ mod tests{
         let title:String;
         {let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless"]);
         br.open("https://www.w3.org/TR/webdriver/").unwrap();
-        title =br.get_title();
+        title =br.get_title().unwrap();
         br.close_browser().unwrap();}
         assert_eq!(title,String::from("WebDriver"));
         
@@ -887,7 +942,7 @@ mod tests{
         let handle: String;
         {let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless"]);
         br.open("https://vk.com").unwrap();
-        handle = br.get_window_handle();
+        handle = br.get_window_handle().unwrap();
         br.close_browser().unwrap();}
         assert!(handle.starts_with("CDwindow"));
         
@@ -897,7 +952,7 @@ mod tests{
         let res :Result<(),String>;
         let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless"]);
         br.open("https://vk.com").unwrap();
-        let handle = br.get_window_handle();
+        let handle = br.get_window_handle().unwrap();
         res = br.switch_to_window(handle);assert_eq!(Ok(()),res);
         br.close_browser().unwrap();
     }
@@ -910,7 +965,7 @@ mod tests{
             handles = br.get_window_handles();
             br.close_browser().unwrap();
         }
-        let len = handles.len();
+        let len = handles.unwrap().len();
         assert_eq!(len,1);
     }
     #[test]
@@ -922,13 +977,13 @@ mod tests{
             handles = br.close_window();
             br.close_browser().unwrap();
         }
-        assert_eq!(handles.len(),0);
+        assert_eq!(handles.unwrap().len(),0);
     }
     #[test]
     fn new_window(){
         let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless"]);
-        let wind = br.new_window(NewWindowType::Tab);
-        assert!(wind.1=="tab"&&br.get_window_handles().len()==2);
+        let wind = br.new_window(NewWindowType::Tab).unwrap();
+        assert!(wind.1=="tab"&&br.get_window_handles().unwrap().len()==2);
         br.close_browser().unwrap();
     }
     #[test]
@@ -985,7 +1040,7 @@ mod tests{
     #[test]
     fn get_wind_rect() {
         let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless","--window-size=400,200"]);
-        let wr = br.get_window_rect();
+        let wr = br.get_window_rect().unwrap();
         br.close_browser().unwrap();
         assert!(wr==WindowRect{height:200,width:400,x:0,y:0});
     }
@@ -1031,7 +1086,7 @@ mod tests{
     fn src() {
         let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless","--window-size=400,200"]);
         br.open("http://localhost:4444/wd/hub/status").unwrap();
-        let a = br.source();
+        let a = br.source().unwrap();
         br.close_browser().unwrap();
         assert!(a.contains("html")&&a.contains("head"))
     }
@@ -1050,7 +1105,7 @@ mod tests{
     fn cookies() {
         let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless"]);
         br.open("https://vk.com").unwrap();
-        let cook = br.get_all_cookies();
+        let cook = br.get_all_cookies().unwrap();
         br.close_browser().unwrap();
         assert!(cook.len()>1);
     }
@@ -1078,7 +1133,7 @@ mod tests{
         let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless"]);
         br.open("https://vk.com").unwrap();
         br.delete_all_cookies().unwrap();
-        let cook = br.get_all_cookies();
+        let cook = br.get_all_cookies().unwrap();
         br.close_browser().unwrap();
         assert_eq!(cook.len(),0);
     }
