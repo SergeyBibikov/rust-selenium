@@ -72,43 +72,11 @@ impl Browser{
     /// ```
     pub fn start_session(browser: BrowserName, args:Vec<&str>)->Browser{
         let req_body = create_session_body_json(browser,args);
-        let headers = vec![format!("Content-Length: {}",req_body.len()+2)];
-        let response = send_request(Method::POST, "wd/hub/session", headers, &req_body).unwrap();
+        let response = send_request(Method::POST, "wd/hub/session", cont_length_header(&req_body), &req_body).unwrap();
         let resp_body = resp_body(response).unwrap();
         let val: Value = serde_json::from_str(&resp_body).unwrap();
         let sess_id = val.value.sessionId;
-        Browser{
-            session_url:format!("wd/hub/session/{}",sess_id),
-            go_to_url: format!("wd/hub/session/{}/url",sess_id),
-            timeouts_url: format!("wd/hub/session/{}/timeouts",sess_id),
-            back_url: format!("wd/hub/session/{}/back",sess_id),
-            forward_url: format!("wd/hub/session/{}/forward",sess_id),
-            refresh_url:format!("wd/hub/session/{}/refresh",sess_id),
-            title_url:format!("wd/hub/session/{}/title",sess_id),
-            window_url:format!("wd/hub/session/{}/window",sess_id),
-            window_handles_url:format!("wd/hub/session/{}/window/handles",sess_id),
-            window_new_url:format!("wd/hub/session/{}/window/new",sess_id),
-            window_rect_url:format!("wd/hub/session/{}/window/rect",sess_id),
-            frame_url:format!("wd/hub/session/{}/frame",sess_id),
-            frame_parent_url:format!("wd/hub/session/{}/frame/parent",sess_id),
-            window_maximize_url:format!("wd/hub/session/{}/window/maximize",sess_id),
-            window_minimize_url:format!("wd/hub/session/{}/window/minimize",sess_id),
-            window_fullscreen_url:format!("wd/hub/session/{}/window/fullscreen",sess_id),
-            element_url:format!("wd/hub/session/{}/element",sess_id),
-            element_active_url:format!("wd/hub/session/{}/element/active",sess_id),
-            elements_url:format!("wd/hub/session/{}/elements",sess_id),
-            source_url:format!("wd/hub/session/{}/source",sess_id),
-            execute_sync_url:format!("wd/hub/session/{}/execute/sync",sess_id),
-            execute_async_url:format!("wd/hub/session/{}/execute/async",sess_id),
-            cookie_url:format!("wd/hub/session/{}/cookie",sess_id),
-            actions_url:format!("wd/hub/session/{}/actions",sess_id),
-            alert_dismiss_url:format!("wd/hub/session/{}/alert/dismiss",sess_id),
-            alert_accept_url:format!("wd/hub/session/{}/alert/accept",sess_id),
-            alert_text_url:format!("wd/hub/session/{}/alert/text",sess_id),
-            screenshot_url:format!("wd/hub/session/{}/screenshot",sess_id),
-            print_page_url:format!("wd/hub/session/{}/print",sess_id),
-
-        }
+        generate_browser_links(&sess_id)
     }
     /*fn start_chrome_session_with_options(chr:ChromeOptions){
     let mut options = chr.string_for_session;
@@ -548,6 +516,39 @@ impl Browser{
 }
 pub (self) mod utils{
     use super::*;
+    pub (super) fn generate_browser_links(sess_id:&str)->Browser{
+        Browser{
+            session_url:format!("wd/hub/session/{}",sess_id),
+            go_to_url: format!("wd/hub/session/{}/url",sess_id),
+            timeouts_url: format!("wd/hub/session/{}/timeouts",sess_id),
+            back_url: format!("wd/hub/session/{}/back",sess_id),
+            forward_url: format!("wd/hub/session/{}/forward",sess_id),
+            refresh_url:format!("wd/hub/session/{}/refresh",sess_id),
+            title_url:format!("wd/hub/session/{}/title",sess_id),
+            window_url:format!("wd/hub/session/{}/window",sess_id),
+            window_handles_url:format!("wd/hub/session/{}/window/handles",sess_id),
+            window_new_url:format!("wd/hub/session/{}/window/new",sess_id),
+            window_rect_url:format!("wd/hub/session/{}/window/rect",sess_id),
+            frame_url:format!("wd/hub/session/{}/frame",sess_id),
+            frame_parent_url:format!("wd/hub/session/{}/frame/parent",sess_id),
+            window_maximize_url:format!("wd/hub/session/{}/window/maximize",sess_id),
+            window_minimize_url:format!("wd/hub/session/{}/window/minimize",sess_id),
+            window_fullscreen_url:format!("wd/hub/session/{}/window/fullscreen",sess_id),
+            element_url:format!("wd/hub/session/{}/element",sess_id),
+            element_active_url:format!("wd/hub/session/{}/element/active",sess_id),
+            elements_url:format!("wd/hub/session/{}/elements",sess_id),
+            source_url:format!("wd/hub/session/{}/source",sess_id),
+            execute_sync_url:format!("wd/hub/session/{}/execute/sync",sess_id),
+            execute_async_url:format!("wd/hub/session/{}/execute/async",sess_id),
+            cookie_url:format!("wd/hub/session/{}/cookie",sess_id),
+            actions_url:format!("wd/hub/session/{}/actions",sess_id),
+            alert_dismiss_url:format!("wd/hub/session/{}/alert/dismiss",sess_id),
+            alert_accept_url:format!("wd/hub/session/{}/alert/accept",sess_id),
+            alert_text_url:format!("wd/hub/session/{}/alert/text",sess_id),
+            screenshot_url:format!("wd/hub/session/{}/screenshot",sess_id),
+            print_page_url:format!("wd/hub/session/{}/print",sess_id),
+        }
+    }
 
     pub (super) fn create_session_body_json(browser:BrowserName,args:Vec<&str>)->String{
             match browser{
