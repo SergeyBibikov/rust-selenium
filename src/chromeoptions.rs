@@ -1,3 +1,6 @@
+///Utility struct to adjust the chrome browser session
+/// 
+/// For more info pls check the chromedriver docs https://chromedriver.chromium.org/capabilities
 pub struct ChromeOptions{
     pub(crate) string_for_session:String,
 }
@@ -32,9 +35,21 @@ impl ChromeOptions{
         self.string_for_session.push('}');
         self
     }
-    pub fn add_extensions(&mut self,args:Vec<&str>)->&mut Self{
+    //Each item in the vec should be a base-64 encoded packed Chrome extension (.crx)
+    pub fn add_extensions(&mut self,extensions:Vec<&str>)->&mut Self{
         if self.string_for_session.contains("extensions"){panic!("The options already contain extension");}
         self.string_for_session.pop();
+        let mut inner_args = String::from("\"extensions\":[");
+        for st in extensions{
+            inner_args.push('"');
+            inner_args.push_str(st);
+            inner_args.push('"');
+            inner_args.push(',');
+        }
+        inner_args.pop();
+        inner_args.push(']');
+        inner_args.push(',');
+        self.string_for_session.push_str(&inner_args);
         self.string_for_session.push('}');
         self
     }
@@ -119,3 +134,9 @@ impl MobileDevice{
         MobileDevice{device_dict}
     }
 }
+// #[test]
+// fn chrwer() {
+//     let mut a = ChromeOptions::new();
+//     a.add_extensions(vec!["sdfsdfsdfdsfsdfDEr4refdfer=","sdffffffdfty675yrtyrty"]);
+//     dbg!(&a.string_for_session);
+// }
