@@ -110,6 +110,25 @@ impl Browser{
 
         }
     }
+    /*fn start_chrome_session_with_options(chr:ChromeOptions){
+    let mut options = chr.string_for_session;
+    options.pop();
+    options.pop();
+    options.push('}');
+    let base_string = format!(r#"{{
+        "capabilities": {{
+            "alwaysMatch": {{
+                "platformName": {}
+            }},
+            "firstMatch": [
+                {{"browserName": "chrome",
+                    {}
+                }}
+            ]
+        }}
+    }}"#,std::env::consts::OS,options).replace(" ","");
+    println!("{}",base_string);        
+    }*/
     ///Open a webpage or a local file
     pub fn open(&self,uri:&str)->Result<(),String>{
         let body = format!(r#"{{"url":"{}"}}"#,uri);
