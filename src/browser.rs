@@ -25,7 +25,8 @@ pub enum BrowserName{
 }
 /// Main crate struct
 /// 
-/// Contains methods for interacting with the selenium server 
+/// Contains methods for manipulating the browser session, internally making requests to the selenium server.
+/// 
 #[derive(Debug)]
 pub struct Browser{
     session_url: String, //The session/ url for constructing other urls
@@ -602,7 +603,7 @@ pub enum NewWindowType{
     Tab,
     Window
 }
-///Represents window height,width,x-axis and y-axis
+///Utility struct representing window height,width,x-axis and y-axis
 #[derive(Serialize,Deserialize,Debug,PartialEq,Clone)]
 pub struct WindowRect{
     pub(self)height:i32,
@@ -615,9 +616,7 @@ impl WindowRect{
         WindowRect{ height, width, x, y}
     }
 }
-///Struct to manage session cookies
-/// 
-///
+///Utility struct to manage session cookies
 #[allow(non_snake_case)]
 #[derive(Serialize,Deserialize,Debug,Clone)]
 pub struct Cookie{
@@ -681,7 +680,7 @@ impl Default for Cookie{
         }
     }
 }
-///Struct to manage the session's implicit, page load and script timeouts
+///Utility struct to manage the session's implicit, page load and script timeouts
 #[allow(non_snake_case)]
 #[derive(Serialize,Deserialize,Debug,PartialEq)]
 pub struct Timeouts{
