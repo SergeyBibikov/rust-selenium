@@ -3,6 +3,8 @@ use std::collections::HashMap;
 use serde::{Serialize,Deserialize};
 
 ///WebElement
+/// 
+/// Provides methods to interact with page elements.
 #[derive(Debug)]
 pub struct Element{
     pub(crate)element_gr_id: String,
@@ -160,7 +162,7 @@ impl Element{
 
     }
 }
-///WebElement hight,width,x-axis and y-axis
+///Encapsulates WebElement's hight,width and left-upper corner x-axis and y-axis coordinates
 #[derive(Deserialize,Serialize,Clone,Debug)]
 pub struct ElementRect{
     pub(crate)height:i32,

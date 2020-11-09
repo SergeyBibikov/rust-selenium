@@ -409,6 +409,16 @@ impl Browser{
         Err(resp)
     }
     ///The path should be absolute with the extension
+    /// 
+    /// # Examples
+    /// ```
+    /// # use selenium_webdriver::*;
+    /// let mut br = Browser::start_session(BrowserName::Chrome,  vec!["--headless","--window-size=7680,4320"]);
+    /// br.open("https://vk.com").unwrap();
+    /// br.take_screenshot("screen.png").unwrap();
+    /// br.close_browser().unwrap();
+    /// # std::fs::remove_file("screen.png").unwrap();
+    /// ```
     pub fn take_screenshot(&self,path:&str)->Result<(),String>{
         if let Ok(resp) = send_request_screensh(Method::GET, &self.screenshot_url, vec![], ""){
              if let Ok(new) = base64::decode(resp){
@@ -617,6 +627,8 @@ impl WindowRect{
     }
 }
 ///Utility struct to manage session cookies
+/// 
+/// Includes two constructor methods and getters/setters for adjustments
 #[allow(non_snake_case)]
 #[derive(Serialize,Deserialize,Debug,Clone)]
 pub struct Cookie{
@@ -631,7 +643,7 @@ pub struct Cookie{
 }
 
 impl Cookie{
-    ///Create a cookie and customize all its fields
+    ///Create a cookie and initialize all its fields
     pub fn new_all(domain:String, expiry:u64,same_site:String, http_only:bool,name:String,path:String,secure:bool,value:String)->Self{
         Cookie{
             domain,
@@ -644,7 +656,7 @@ impl Cookie{
             value
         }
     }
-    ///Create default cookie customize only name and value
+    ///Create default cookie and set only name and value
     pub fn new(name:String,value:String)->Self{
         Cookie{name,value,..Default::default()}
     }
@@ -717,6 +729,8 @@ impl Timeouts{
 
 }
 ///Main struct for print settings
+/// 
+/// Has the default method with default WebDriver print settings and getters/setters for print adjustment.
 #[allow(non_snake_case)]
 #[derive(Serialize,Deserialize,Debug)]
 pub struct PrintSettings{
