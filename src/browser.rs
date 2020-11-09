@@ -888,11 +888,6 @@ mod tests{
         assert_eq!(32,sess.len());
     }
     #[test]
-    fn firefox_session() {
-        let mut browser = Browser::start_session(BrowserName::Firefox,vec![]);
-        browser.close_browser().unwrap();
-    }
-    #[test]
     fn go_to_vk() {
         let mut browser = Browser::start_session(BrowserName::Chrome, vec!["--headless"]);
         browser.open("https://vk.com").unwrap();
