@@ -8,6 +8,7 @@ use super::element::*;
 use super::actions::*;
 use super::specialkey::*;
 use super::chromeoptions::*;
+use super::firefoxoptions::*;
 
 #[derive(Serialize,Deserialize)]
 struct Value{
@@ -62,10 +63,9 @@ pub struct Browser{
 }
 
 impl Browser{
-    ///Method to construct the Browser instance. Currently, the args are supported for chrome,
-    /// while for firefox they will be ignored. Proper Firefox options handling will be
-    /// added in future releases. To fully customize the Chrome session pls use the 
-    /// method start_chrome_session_with_options().
+    /// Method to construct the Browser instance with basic session. Supports args for Chrome,
+    /// while for Firefox they will be ignored. To customize the Chrome and Firefox sessions pls use the corresponding
+    /// method start_..._session_with_options().
     ///  
     /// # Examples
     /// ```
@@ -98,6 +98,16 @@ impl Browser{
     /// ```
     pub fn start_chrome_session_with_options(options:ChromeOptions)->Result<Browser,String>{
         let body = create_json_body_for_session_with_chrome_options(options);
+        let resp = send_and_read_body (Method::POST, "wd/hub/session", cont_length_header(&body), &body);
+        if resp.contains("error"){return Err(resp);}
+        let val: Value = serde_json::from_str(&resp).unwrap();
+        let sess_id = val.value.sessionId;
+        Ok(generate_browser_links(&sess_id))
+    }
+    /// Method to start the Firefox session adjusted with FirefoxOptions
+    /// Works similar to the ChromeOptions. For more info please check the FirefoxOptions docs.
+    pub fn start_firefox_session_with_options(options:FirefoxOptions)->Result<Browser,String>{
+        let body = create_json_body_for_session_with_firefox_options(options);
         let resp = send_and_read_body (Method::POST, "wd/hub/session", cont_length_header(&body), &body);
         if resp.contains("error"){return Err(resp);}
         let val: Value = serde_json::from_str(&resp).unwrap();
@@ -585,6 +595,25 @@ pub (self) mod utils{
                 }},
                 "firstMatch": [
                     {{"browserName": "chrome",
+                        {}
+                    }}
+                ]
+            }}
+        }}"#,std::env::consts::OS,options);
+        base_string
+    }
+    pub (super) fn create_json_body_for_session_with_firefox_options(ff_options:FirefoxOptions)->String{
+        let mut options = ff_options.string_for_session;
+        options.pop();
+        options.pop();
+        options.push('}');
+        let base_string = format!(r#"{{
+            "capabilities": {{
+                "alwaysMatch": {{
+                    "platformName": "{}"
+                }},
+                "firstMatch": [
+                    {{"browserName": "firefox",
                         {}
                     }}
                 ]
@@ -1514,6 +1543,19 @@ mod additional_tests{
         ch.add_args(vec!["--headless","--window-size=400,600"]);
         ch.add_mobile_emulation(mob);
         let mut br = Browser::start_chrome_session_with_options(ch).unwrap();
+        let res = br.open("https://vk.com");
+        let res2 = br.close_browser();
+        assert!(res.is_ok()&&res2.is_ok());
+    }
+    #[test]
+    fn brow_firefox_opts() {
+        let mut ff = FirefoxOptions::new();
+        ff.add_args(vec!["-headless","-devtools"]);
+        let mut map = HashMap::new();
+        map.insert("MOZ_HEADLESS_WIDTH", "600");
+        map.insert("MOZ_HEADLESS_HEIGHT", "400");
+        ff.add_env(map);
+        let mut br = Browser::start_firefox_session_with_options(ff).unwrap();
         let res = br.open("https://vk.com");
         let res2 = br.close_browser();
         assert!(res.is_ok()&&res2.is_ok());

@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use serde::Serialize;
+use super::reqs::*;
 ///Utility struct to adjust the chrome browser session
 /// 
 /// For more info pls check the chromedriver docs at https://chromedriver.chromium.org/capabilities
@@ -61,6 +62,8 @@ impl ChromeOptions{
         }
         temp_string.pop();
         temp_string.push('}');
+        temp_string.push(',');
+        self.string_for_session.push_str(&temp_string);
         self.string_for_session.push('}');
         self
     }
@@ -75,6 +78,8 @@ impl ChromeOptions{
         }
         temp_string.pop();
         temp_string.push('}');
+        temp_string.push(',');
+        self.string_for_session.push_str(&temp_string);
         self.string_for_session.push('}');
         self
     }
@@ -147,20 +152,7 @@ impl ChromeOptions{
         self
     }
 }
-fn from_str_vec_to_str(vec: Vec<&str>)->String{
-    if vec.len() == 0 {return String::from("[]");}
-    let mut string_args = String::from("[");
-    for st in vec{
-        string_args.push('"');
-        string_args.push_str(st);
-        string_args.push('"');
-        string_args.push(',');
-    }
-    string_args.pop();
-    string_args.push(']');
-    string_args.push(',');
-    string_args
-}
+
 ///See the details at https://chromedriver.chromium.org/mobile-emulation
 pub struct MobileDevice{
     pub(crate) device_dict:String,

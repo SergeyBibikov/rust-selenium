@@ -10,6 +10,7 @@ mod element;
 mod actions;
 mod specialkey;
 mod chromeoptions;
+mod firefoxoptions;
 
 pub use browser::*;
 pub use actions::*;
@@ -17,3 +18,4 @@ pub use element::*;
 pub use specialkey::*;
 pub use reqs::*;
 pub use chromeoptions::*;
+pub use firefoxoptions::*;

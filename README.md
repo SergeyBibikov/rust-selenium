@@ -15,19 +15,19 @@ Provides basic functionality for UI automated tests and scripts.
 ## Limitations
 
 * Not tested on MacOS
-* Geckodriver session does not support any customization possibilities at the moment
+* So far only Chrome and Firefox are supported
 
 ## TO DO
 
-* Firefox session customization
-* Useful methods which are implemented in other Selenium implementations
+* Useful methods which are available in other Selenium implementations
+* Safari support
 
 ## Contributions
 Any contributions, bug reports and improvement suggestions are much anticipated and appreciated!
 
 ===
-Release notes:
-
+\Release notes:
+* v 0.1.3 - FirefoxOptions support
 * v 0.1.2 - ChromeOptions support
 * v 0.1.1 - necessary info added
 * v 0.1.0 - initial release

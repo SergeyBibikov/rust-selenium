@@ -178,6 +178,20 @@ pub (crate) fn parse_value(body: &str)->String{
     let result: String = resp_vec.iter().collect();
     result
 }
+pub(crate) fn from_str_vec_to_str(vec: Vec<&str>)->String{
+    if vec.len() == 0 {return String::from("[]");}
+    let mut string_args = String::from("[");
+    for st in vec{
+        string_args.push('"');
+        string_args.push_str(st);
+        string_args.push('"');
+        string_args.push(',');
+    }
+    string_args.pop();
+    string_args.push(']');
+    string_args.push(',');
+    string_args
+}
 
 //TESTS FOR PRIVATE FUNCTIONS
 #[test]
