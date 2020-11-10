@@ -28,6 +28,6 @@ Any contributions, bug reports and improvement suggestions are much anticipated 
 ===
 Release notes:
 
-v 0.1.2 - ChromeOptions support
-v 0.1.1 - necessary info added
-v 0.1.0 - initial release
+* v 0.1.2 - ChromeOptions support
+* v 0.1.1 - necessary info added
+* v 0.1.0 - initial release
