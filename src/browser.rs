@@ -62,9 +62,11 @@ pub struct Browser{
 }
 
 impl Browser{
-    ///The only method to construct the Browser instance. Currently, the args are supported for chrome,
-    /// while for firefox they will be ignored. Proper Chrome and Firefox options handling will be
-    /// added in future releases. 
+    ///Method to construct the Browser instance. Currently, the args are supported for chrome,
+    /// while for firefox they will be ignored. Proper Firefox options handling will be
+    /// added in future releases. To fully customize the Chrome session pls use the 
+    /// method start_chrome_session_with_options().
+    ///  
     /// # Examples
     /// ```
     /// # use selenium_webdriver::*;
