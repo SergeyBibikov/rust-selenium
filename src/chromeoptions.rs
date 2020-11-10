@@ -104,6 +104,19 @@ impl ChromeOptions{
         self
     }
 }
+fn from_str_vec_to_str(vec: Vec<&str>)->String{
+    if vec.len() == 0 {return String::from("[]");}
+    let mut string_args = String::from("[");
+    for st in vec{
+        string_args.push('"');
+        string_args.push_str(st);
+        string_args.push('"');
+        string_args.push(',');
+    }
+    string_args.pop();
+    string_args.push(']');
+    string_args
+}
 ///See the details at https://chromedriver.chromium.org/mobile-emulation
 pub struct MobileDevice{
     pub(crate) device_dict:String,
@@ -134,9 +147,15 @@ impl MobileDevice{
         MobileDevice{device_dict}
     }
 }
-// #[test]
-// fn chrwer() {
-//     let mut a = ChromeOptions::new();
-//     a.add_extensions(vec!["sdfsdfsdfdsfsdfDEr4refdfer=","sdffffffdfty675yrtyrty"]);
-//     dbg!(&a.string_for_session);
-// }
+pub mod chr_opt_tests{
+    use super::*;
+    #[test]
+    fn gen_str() {
+        let v = vec![];
+        let string = from_str_vec_to_str(v);
+        assert_eq!(&string, "[]");
+        let args = vec!["--headless","--window-size=800,600"];
+        let string = from_str_vec_to_str(args);
+        assert_eq!(string,"[\"--headless\",\"--window-size=800,600\"]");
+    }
+}
