@@ -13,6 +13,7 @@ Provides basic functionality for UI automated tests and scripts.
 * A chromedriver or geckodriver
 
 # Limitations
+* Not testes on MacOS
 
 * Chromedriver: currently ChromeOptions are not fully supported, but arguments may be passed to the session. (See the following source for possible args: https://peter.sh/experiments/chromium-command-line-switches/)
 
