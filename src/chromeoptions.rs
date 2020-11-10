@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use serde::Serialize;
 ///Utility struct to adjust the chrome browser session
 /// 
 /// For more info pls check the chromedriver docs at https://chromedriver.chromium.org/capabilities
@@ -95,6 +96,7 @@ impl ChromeOptions{
         self.string_for_session.push('}');
         self
     }
+    ///List of Chrome command line switches to exclude 
     pub fn add_exclude_switches(&mut self,switches: Vec<&str>)->&mut Self{
         if self.string_for_session.contains("excludeSwitches"){panic!("The options already contain switches to exclude");}
         self.string_for_session.pop();
@@ -105,18 +107,35 @@ impl ChromeOptions{
         self.string_for_session.push('}');
         self
     }
+    ///Only for Linux. Directory to store Chrome minidumps
     pub fn add_minidump_path(&mut self,path:&str)->&mut Self{
         if self.string_for_session.contains("minidumpPath"){panic!("The options already contain the path to the minidump");}
         self.string_for_session.pop();
+        let text = format!(r#""minidumpPath":"{}","#,path);
+        self.string_for_session.push_str(&text);
         self.string_for_session.push('}');
         self
     }
+    ///See the MobileDevice struct for more info
     pub fn add_mobile_emulation(&mut self,device:MobileDevice)->&mut Self{
         if self.string_for_session.contains("mobileEmulation"){panic!("The options already contain the device to emulate");}
         self.string_for_session.pop();
+        let text = format!(r#""mobileEmulation":{},"#,device.device_dict);
+        self.string_for_session.push_str(&text);
         self.string_for_session.push('}');
         self
     }
+    ///Pls check chromedriver docs for more info
+    pub fn add_perf_logging_prefs(&mut self, prefs:PerfLoggingPrefs)->&mut Self{
+        if self.string_for_session.contains("perfLoggingPrefs"){panic!("The options already contain the device to emulate");}
+        self.string_for_session.pop();
+        let perf_to_json = serde_json::to_string(&prefs).unwrap();
+        let text = format!(r#""perfLoggingPrefs":{},"#,perf_to_json);
+        self.string_for_session.push_str(&text);
+        self.string_for_session.push('}');
+        self
+    }
+    ///A list of window types that will appear in the list of window handles.
     pub fn add_window_types(&mut self,window_types:Vec<&str>)->&mut Self{
         if self.string_for_session.contains("windowTypes"){panic!("The options already contain window types");}
         self.string_for_session.pop();
@@ -172,8 +191,62 @@ impl MobileDevice{
         MobileDevice{device_dict}
     }
 }
+///An optional struct that specifies performance logging preferences
+/// 
+/// Has the default method for instantiating and setters for customization
+#[allow(non_snake_case)]
+#[derive(Serialize,Debug)]
+pub struct PerfLoggingPrefs{
+    enableNetwork:bool,
+    enablePage:bool,
+    traceCategories:String,
+    bufferUsageReportingInterval:u32,
+}
+impl PerfLoggingPrefs{
+    pub fn set_enable_network(&mut self, en_network:bool){
+        self.enableNetwork = en_network;
+    }
+    pub fn set_enable_page(&mut self,en_page:bool ){
+        self.enablePage = en_page;
+    }
+    pub fn set_trace_categories(&mut self,trace_cat:String){
+        self.traceCategories = trace_cat;
+    }
+    pub fn set_buffer_usage_rep_interval(&mut self,buff: u32){
+        self.bufferUsageReportingInterval = buff;
+    }     
+}
+impl Default for PerfLoggingPrefs{
+    fn default()->Self{
+        PerfLoggingPrefs{
+            enableNetwork: true,
+            enablePage: true,
+            traceCategories: String::from(""),
+            bufferUsageReportingInterval: 1000,
+        }
+    }
+}
+
+
+
 pub (crate) mod chr_opt_tests{
     use super::*;
+    #[test]
+    fn chro_mob_em() {
+        let mut ch = ChromeOptions::new();
+        let mob = MobileDevice::standard_device("Nexus 6");
+        ch.add_mobile_emulation(mob);
+        let x = r#""goog:chromeOptions":{"mobileEmulation":{"deviceName":"Nexus 6"},}"#;
+        assert_eq!(x,ch.string_for_session);
+    }
+    #[test]
+    fn chro_cust_mob_em() {
+        let mut ch = ChromeOptions::new();
+        let mob = MobileDevice::custom_device(300,150,3.0,true,"Custom Agent");
+        ch.add_mobile_emulation(mob);
+        let x = r#""goog:chromeOptions":{"mobileEmulation":{"deviceMetrics":{"width":300,"height":150,"pixel_ratio":3,"touch":true},"userAgent":"CustomAgent"},}"#;
+        assert_eq!(x,ch.string_for_session);
+    }
     #[test]
     fn chro_gen_str() {
         let v = vec![];
@@ -206,17 +279,10 @@ pub (crate) mod chr_opt_tests{
         
     }
     #[test]
-    fn dummy() {
-        let mut a:HashMap<_,_> = HashMap::new();
-        a.insert("name","property");
-        a.insert("secondName","property");
-        let mut s = String::from("\"localState\":{");
-        for i in a{
-            let temp = format!(r#""{}":"{}","#,i.0,i.1);
-            s.push_str(&temp);
-        }
-        s.pop();
-        s.push('}');
-        println!("{}",s);        
+    fn chro_perf_log() {
+        let pr = PerfLoggingPrefs::default();
+        let mut ch = ChromeOptions::new();
+        ch.add_perf_logging_prefs(pr);
+        assert!(ch.string_for_session.contains("perfLoggingPrefs"));
     }
 }

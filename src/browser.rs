@@ -79,14 +79,29 @@ impl Browser{
         let sess_id = val.value.sessionId;
         generate_browser_links(&sess_id)
     }
-    /*pub fn start_chrome_session_with_options(options:ChromeOptions)->Result<Browser,String>{
+    ///Method to start the session customized with ChromeOptions
+    /// 
+    /// # Examples
+    /// ```
+    /// # use selenium_webdriver::*;
+    /// let mut ch = ChromeOptions::new();
+    /// let mob = MobileDevice::standard_device("Nexus 6");
+    /// ch.add_args(vec!["--headless","--window-size=400,600"]);
+    /// ch.add_mobile_emulation(mob);
+    /// let mut br = Browser::start_chrome_session_with_options(ch).unwrap();
+    /// let res = br.open("https://vk.com");
+    /// let res2 = br.close_browser();
+    /// assert!(res.is_ok()&&res2.is_ok());
+    /// 
+    /// ```
+    pub fn start_chrome_session_with_options(options:ChromeOptions)->Result<Browser,String>{
         let body = create_json_body_for_session_with_chrome_options(options);
         let resp = send_and_read_body (Method::POST, "wd/hub/session", cont_length_header(&body), &body);
         if resp.contains("error"){return Err(resp);}
         let val: Value = serde_json::from_str(&resp).unwrap();
         let sess_id = val.value.sessionId;
         Ok(generate_browser_links(&sess_id))
-    }*/
+    }
     ///Open a webpage or a local file
     pub fn open(&self,uri:&str)->Result<(),String>{
         let body = format!(r#"{{"url":"{}"}}"#,uri);
@@ -539,7 +554,6 @@ pub (self) mod utils{
             print_page_url:format!("wd/hub/session/{}/print",sess_id),
         }
     }
-
     pub (super) fn create_session_body_json(browser:BrowserName,args:Vec<&str>)->String{
             match browser{
                 BrowserName::Chrome=> create_chrome_session(args),
@@ -565,7 +579,7 @@ pub (self) mod utils{
         let base_string = format!(r#"{{
             "capabilities": {{
                 "alwaysMatch": {{
-                    "platformName": {}
+                    "platformName": "{}"
                 }},
                 "firstMatch": [
                     {{"browserName": "chrome",
@@ -573,7 +587,7 @@ pub (self) mod utils{
                     }}
                 ]
             }}
-        }}"#,std::env::consts::OS,options).replace(" ","");
+        }}"#,std::env::consts::OS,options);
         base_string
     }
     pub (super) fn gen_args(args:Vec<&str>)->String{
@@ -631,11 +645,7 @@ pub (self) mod utils{
         Cookie{name,value,path,expiry,secure,domain,httpOnly: http_only,sameSite:same_site}
     }
 }
-    
-/*
-TODO
-pub struct ChromeOptions{}
-*/
+
 ///Needed to call the new_window method
 pub enum NewWindowType{
     Tab,
@@ -877,7 +887,7 @@ pub enum Orientation{
 }
 
 //TESTS
-mod tests{
+mod core_fns_tests{
 
     use super::*;
     use super::Element;
@@ -1491,5 +1501,19 @@ mod tests{
         br.close_browser().unwrap();
         assert!(res.is_ok());
         assert!(res2.is_ok());        
+    }
+}
+mod additional_tests{
+    use super::*;
+    #[test]
+    fn brow_chrome_opts() {
+        let mut ch = ChromeOptions::new();
+        let mob = MobileDevice::standard_device("Nexus 6");
+        ch.add_args(vec!["--headless","--window-size=400,600"]);
+        ch.add_mobile_emulation(mob);
+        let mut br = Browser::start_chrome_session_with_options(ch).unwrap();
+        let res = br.open("https://vk.com");
+        let res2 = br.close_browser();
+        assert!(res.is_ok()&&res2.is_ok());
     }
 }

@@ -2,25 +2,32 @@
 
 [docs](https://docs.rs/selenium_webdriver/)
 
-# Purpose
+## Purpose
 
 The main purpose of this crate is to provide the means of interacting with the selenium server.
 Provides basic functionality for UI automated tests and scripts.
 
-# Requirements
+## Requirements
 
 * Selenium server running on localhost:4444
 * A chromedriver or geckodriver
 
-# Limitations
-* Not testes on MacOS
+## Limitations
 
-* Chromedriver: currently ChromeOptions are not fully supported, but arguments may be passed to the session. (See the following source for possible args: https://peter.sh/experiments/chromium-command-line-switches/)
-
+* Not tested on MacOS
 * Geckodriver session does not support any customization possibilities at the moment
 
-# TO DO
+## TO DO
 
-1) ChromeOptions
-2) Firefox session adjustments
-3) Useful methods which are implemented in other Selenium implementations
+* Firefox session customization
+* Useful methods which are implemented in other Selenium implementations
+
+## Contributions
+Any contributions, bug reports and improvement suggestions are much anticipated and appreciated!
+
+===
+Release notes:
+
+v 0.1.2 - ChromeOptions support
+v 0.1.1 - necessary info added
+v 0.1.0 - initial release
