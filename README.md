@@ -25,8 +25,7 @@ Provides basic functionality for UI automated tests and scripts.
 ## Contributions
 Any contributions, bug reports and improvement suggestions are much anticipated and appreciated!
 
-===
-\Release notes:
+### Release notes:
 * v 0.1.3 - FirefoxOptions support
 * v 0.1.2 - ChromeOptions support
 * v 0.1.1 - necessary info added
