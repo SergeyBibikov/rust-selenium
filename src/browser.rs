@@ -1571,14 +1571,14 @@ mod additional_tests{
 mod safari_tests{
     use super::*;
     #[test]
-    #[cfg(macos)]
+    #[cfg(target_os="macos")]
     fn saf_open_vk() {
         let mut br = Browser::start_session(BrowserName::Safari, vec![]);
-        br.open("https://vk.com");
-        br.close_browser();
+        br.open("https://vk.com").unwrap();
+        br.close_browser().unwrap();
     }
     #[test]
-    #[cfg(macos)]
+    #[cfg(target_os="macos")]
     fn saf_forward() {
         let link: String;
         {let mut br = Browser::start_session(BrowserName::Safari,vec![]);
@@ -1588,6 +1588,6 @@ mod safari_tests{
         br.forward().unwrap();
         link = br.get_link().unwrap();        
         br.close_browser().unwrap();}
-        assert_eq!(&link,"https://m.facebook.com/");
+        assert!(link.contains("facebook"));
     }
 }
