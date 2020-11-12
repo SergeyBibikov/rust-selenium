@@ -12,19 +12,15 @@ Provides basic functionality for UI automated tests and scripts.
 * Selenium server running on localhost:4444
 * A chromedriver, geckodriver or safari
 
-## Limitations
-
-* For now Safari supports only simple session
-
 ## TO DO
 
 * Add useful methods which are available in other Selenium implementations
-* Add support for Safari session options
 
 ## Contributions
 Any contributions, bug reports and improvement suggestions are much anticipated and appreciated!
 
 ### Release notes:
+* v 0.1.5 - SafariOptions support
 * v 0.1.4 - Basic Safari support
 * v 0.1.3 - FirefoxOptions support
 * v 0.1.2 - ChromeOptions support

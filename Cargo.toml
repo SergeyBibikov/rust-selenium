@@ -1,6 +1,6 @@
 [package]
 name = "selenium_webdriver"
-version = "0.1.4"
+version = "0.1.5"
 authors = ["Sergey Bibikov <sergey.bibikov.92@mail.ru>"]
 edition = "2018"
 description = "A crate to interact with the selenium server and write automated UI scripts and tests"
@@ -8,7 +8,7 @@ license = "Apache-2.0"
 readme = "README.md"
 documentation = "https://docs.rs/selenium_webdriver/"
 repository = "https://github.com/SergeyBibikov/rust-selenium"
-keywords = ["selenium", "testing", "browser", "automation", "webdriver"]
+keywords = ["selenium", "testing", "browser", "automation", "webdriver", "safari", "firefox", "chrome"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
