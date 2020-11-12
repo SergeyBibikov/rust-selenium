@@ -8,7 +8,7 @@ license = "Apache-2.0"
 readme = "README.md"
 documentation = "https://docs.rs/selenium_webdriver/"
 repository = "https://github.com/SergeyBibikov/rust-selenium"
-keywords = ["selenium", "testing", "browser", "automation", "webdriver", "safari", "firefox", "chrome"]
+keywords = ["selenium", "webdriver", "safari", "firefox", "chrome"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
