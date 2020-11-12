@@ -1602,4 +1602,40 @@ mod safari_tests{
         br.close_browser().unwrap();}
         assert!(link.contains("facebook"));
     }
+    #[test]
+    #[cfg(target_os="macos")]
+    fn saf_diagn() {
+        let mut saf_op = SafariOptions::new();
+        saf_op.enable_diagnose();
+        let mut br = Browser::start_safari_session_with_options(saf_op).unwrap();
+        br.open("https://vk.com/").unwrap();
+        br.close_browser().unwrap();
+    }
+    #[test]
+    #[cfg(target_os="macos")]
+    fn saf_inspe() {
+        let mut saf_op = SafariOptions::new();
+        saf_op.enable_automatic_inspection();
+        let mut br = Browser::start_safari_session_with_options(saf_op).unwrap();
+        br.open("https://vk.com/").unwrap();
+        br.close_browser().unwrap();
+    }
+    #[test]
+    #[cfg(target_os="macos")]
+    fn saf_profi() {
+        let mut saf_op = SafariOptions::new();
+        saf_op.enable_automatic_profiling();
+        let mut br = Browser::start_safari_session_with_options(saf_op).unwrap();
+        br.open("https://vk.com/").unwrap();
+        br.close_browser().unwrap();
+    }
+    #[test]
+    #[cfg(target_os="macos")]
+    fn saf_sim() {
+        let mut saf_op = SafariOptions::new();
+        saf_op.enable_simulator();
+        let mut br = Browser::start_safari_session_with_options(saf_op).unwrap();
+        br.open("https://vk.com/").unwrap();
+        br.close_browser().unwrap();
+    }
 }
