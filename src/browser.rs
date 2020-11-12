@@ -23,7 +23,8 @@ struct Session{
 
 pub enum BrowserName{
     Chrome,
-    Firefox
+    Firefox,
+    Safari
 }
 /// Main crate struct
 /// 
@@ -570,6 +571,7 @@ pub (self) mod utils{
             match browser{
                 BrowserName::Chrome=> create_chrome_session(args),
                 BrowserName::Firefox=>create_firefox_session(),
+                BrowserName::Safari=>create_safari_session(),
             }
     }
     pub (super) fn create_chrome_session(args:Vec<&str>)->String{
@@ -581,6 +583,11 @@ pub (self) mod utils{
     pub (super) fn create_firefox_session()->String{
         let one=format!(r#"{{"capabilities": {{"alwaysMatch":{{"platformName":"{}"}}"#,std::env::consts::OS);
         let two=format!(r#"{},"firstMatch":[{{"browserName":"firefox"}}]}}}}"#,one);
+        two
+    }
+    pub (super) fn create_safari_session()->String{
+        let one=format!(r#"{{"capabilities": {{"alwaysMatch":{{"platformName":"{}"}}"#,std::env::consts::OS);
+        let two=format!(r#"{},"firstMatch":[{{"browserName":"safari"}}]}}}}"#,one);
         two
     }
     pub (super) fn create_json_body_for_session_with_chrome_options(chrome_options:ChromeOptions)->String{
@@ -1559,5 +1566,28 @@ mod additional_tests{
         let res = br.open("https://vk.com");
         let res2 = br.close_browser();
         assert!(res.is_ok()&&res2.is_ok());
+    }
+}
+mod safari_tests{
+    use super::*;
+    #[test]
+    #[cfg(macos)]
+    fn saf_open_vk() {
+        let mut br = Browser::start_session(BrowserName::Safari, vec![]);
+        br.open("https://vk.com");
+        br.close_browser();
+    }
+    #[test]
+    #[cfg(macos)]
+    fn saf_forward() {
+        let link: String;
+        {let mut br = Browser::start_session(BrowserName::Safari,vec![]);
+        br.open("https://vk.com/").unwrap();
+        br.open("https://m.facebook.com/").unwrap();
+        br.back().unwrap();
+        br.forward().unwrap();
+        link = br.get_link().unwrap();        
+        br.close_browser().unwrap();}
+        assert_eq!(&link,"https://m.facebook.com/");
     }
 }
