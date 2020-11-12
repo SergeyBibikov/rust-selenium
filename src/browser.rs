@@ -65,7 +65,7 @@ pub struct Browser{
 
 impl Browser{
     /// Method to construct the Browser instance with basic session. Supports args for Chrome,
-    /// while for Firefox they will be ignored. To customize the Chrome and Firefox sessions pls use the corresponding
+    /// while for Firefox and Safari they will be ignored. To customize the Chrome and Firefox sessions pls use the corresponding
     /// method start_..._session_with_options().
     ///  
     /// # Examples
