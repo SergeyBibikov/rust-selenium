@@ -9,6 +9,7 @@ use super::actions::*;
 use super::specialkey::*;
 use super::chromeoptions::*;
 use super::firefoxoptions::*;
+use super::safarioptions::*;
 
 #[derive(Serialize,Deserialize)]
 struct Value{
@@ -115,6 +116,17 @@ impl Browser{
         let sess_id = val.value.sessionId;
         Ok(generate_browser_links(&sess_id))
     }
+    /// Method to start the Safari with settings.
+    /// Works similar to the ChromeOptions and FFOptions. For more info please check the SafariOptions docs.
+    pub fn start_safari_session_with_options(options:SafariOptions)->Result<Browser,String>{
+        let body = options.base_string;
+        let resp = send_and_read_body (Method::POST, "wd/hub/session", cont_length_header(&body), &body);
+        if resp.contains("error"){return Err(resp);}
+        let val: Value = serde_json::from_str(&resp).unwrap();
+        let sess_id = val.value.sessionId;
+        Ok(generate_browser_links(&sess_id))
+    }
+
     ///Open a webpage or a local file
     pub fn open(&self,uri:&str)->Result<(),String>{
         let body = format!(r#"{{"url":"{}"}}"#,uri);

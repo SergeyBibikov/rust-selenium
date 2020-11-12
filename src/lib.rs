@@ -11,6 +11,7 @@ mod actions;
 mod specialkey;
 mod chromeoptions;
 mod firefoxoptions;
+mod safarioptions;
 
 pub use browser::*;
 pub use actions::*;
@@ -19,3 +20,4 @@ pub use specialkey::*;
 pub use reqs::*;
 pub use chromeoptions::*;
 pub use firefoxoptions::*;
+pub use safarioptions::*;
