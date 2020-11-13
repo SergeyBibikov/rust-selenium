@@ -7,6 +7,8 @@ use serde::{Serialize,Deserialize};
 /// Provides methods to interact with page elements.
 #[derive(Debug)]
 pub struct Element{
+    pub(crate)ip:String,
+    pub(crate)port:String,
     pub(crate)element_gr_id: String,
     pub(crate)element_id: String,
     pub(crate)element_url: String,
@@ -16,13 +18,15 @@ impl Element{
     pub fn find_element_from_self(&self,locator:LocatorStrategy)->Result<Element,String>{
         let url = format!("{}/element",self.element_url);
         let body = body_for_find_element(locator);
-        let resp = send_and_read_body(Method::POST, &url, cont_length_header(&body), &body);
+        let resp = send_and_read_body(&self.ip,&self.port,Method::POST, &url, cont_length_header(&body), &body);
         if resp.contains("error"){return Err(resp);}
         let resp = parse_value(&resp);
         let map: HashMap<String,String> = serde_json::from_str(&resp).unwrap();
         let res = map.iter().next().unwrap();
         let el_url = self.element_url.split("/element").next().unwrap();
         Ok(Element{
+            ip:self.ip.clone(),
+            port:self.port.clone(),
             element_gr_id:res.0.clone(),
             element_id:res.1.clone(),
             element_url: format!("{}/element/{}",el_url,res.1.clone()),
@@ -33,7 +37,7 @@ impl Element{
         let mut result = vec![];
         let url = format!("{}/elements",self.element_url);
         let body = body_for_find_element(locator);
-        let resp=send_and_read_body(Method::POST, &url, cont_length_header(&body), &body);
+        let resp=send_and_read_body(&self.ip,&self.port,Method::POST, &url, cont_length_header(&body), &body);
         if resp.contains("error"){return Err(resp);}
         let resp = parse_value(&resp);
         let map: Vec<HashMap<String,String>> = serde_json::from_str(&resp).unwrap();
@@ -42,6 +46,8 @@ impl Element{
             let element_ur = element_ur.clone();
             let res = i.iter().next().unwrap();
             result.push(Element{
+            ip:self.ip.clone(),
+            port:self.port.clone(),
             element_gr_id:res.0.clone(),
             element_id:res.1.clone(),
             element_url:format!("{}/element/{}",element_ur,res.1.clone()),
@@ -51,14 +57,14 @@ impl Element{
     }
     pub fn is_selected(&self)->Result<bool,String>{
         let url = format!("{}/selected",self.element_url) ;
-        let resp = send_and_read_body(Method::GET, &url, vec![], "");
+        let resp = send_and_read_body(&self.ip,&self.port,Method::GET, &url, vec![], "");
         if resp.contains("error"){return Err(resp);}
         let map: HashMap<&str,bool> = serde_json::from_str(&resp).unwrap();
         Ok(*map.get("value").unwrap())
     }
     pub fn get_attribute(&self,attribute_name: &str)->Result<String,String>{
         let url = format!("{}/attribute/{}",self.element_url,attribute_name);
-        let resp = send_and_read_body(Method::GET, &url, vec![], "");
+        let resp = send_and_read_body(&self.ip,&self.port,Method::GET, &url, vec![], "");
         if resp.contains("error"){return Err(resp);}
         if resp.as_bytes()==br#"{"value":null}"#{return Ok("null".to_string());}
         let map:HashMap<&str,String> = serde_json::from_str(&resp).unwrap();
@@ -68,7 +74,7 @@ impl Element{
     /// parsing the String response to the necessary type is left for the lib users
     pub fn get_property(&self,property_name:&str)->Result<String,String>{
         let url = format!("{}/property/{}",self.element_url,property_name);
-        let resp = send_and_read_body(Method::GET, &url, vec![], "");
+        let resp = send_and_read_body(&self.ip,&self.port,Method::GET, &url, vec![], "");
         if resp.contains("error"){return Err(resp);}
         if resp.as_bytes()==br#"{"value":null}"#{
             return Ok(String::from("null"));
@@ -78,19 +84,19 @@ impl Element{
     ///The logic behind returning json is the same as for get_property method
     pub fn get_css_value(&self,css_property_name:&str)->Result<String,String>{
         let url = format!("{}/css/{}",self.element_url,css_property_name);
-        let resp = send_and_read_body(Method::GET, &url, vec![], "");
+        let resp = send_and_read_body(&self.ip,&self.port,Method::GET, &url, vec![], "");
         if resp.contains("error"){return Err(resp);}else{Ok(resp)}      
     }
     pub fn get_element_text(&self)->Result<String,String>{
         let url = format!("{}/text",self.element_url);
-        let resp = send_and_read_body(Method::GET, &url, vec![], "");
+        let resp = send_and_read_body(&self.ip,&self.port,Method::GET, &url, vec![], "");
         if resp.contains("error"){return Err(resp);}
         let map: HashMap<&str,String> = serde_json::from_str(&resp).unwrap();
         Ok((*map.get("value").unwrap()).clone())
     }
     pub fn get_tag_name(&self)->Result<String,String>{
         let url = format!("{}/name",self.element_url);
-        let resp = send_and_read_body(Method::GET, &url, vec![], "");
+        let resp = send_and_read_body(&self.ip,&self.port,Method::GET, &url, vec![], "");
         if resp.contains("error"){return Err(resp);}
         let map: HashMap<&str,String> = serde_json::from_str(&resp).unwrap();
         Ok((*map.get("value").unwrap()).clone())
@@ -98,14 +104,14 @@ impl Element{
     ///Returns the element's size(hight,width) and position(x-axis and y-axis)
     pub fn get_element_rect(&self)->Result<ElementRect,String>{
         let url = format!("{}/rect",self.element_url);
-        let resp = send_and_read_body(Method::GET, &url, vec![], "");
+        let resp = send_and_read_body(&self.ip,&self.port,Method::GET, &url, vec![], "");
         if resp.contains("error"){return Err(resp);}
         let map: HashMap<&str,ElementRect> = serde_json::from_str(&resp).unwrap();
         Ok((*map.get("value").unwrap()).clone())
     }
     pub fn is_enabled(&self)->Result<bool,String>{
         let url = format!("{}/enabled",self.element_url);
-        let resp = send_and_read_body(Method::GET, &url, vec![], "");
+        let resp = send_and_read_body(&self.ip,&self.port,Method::GET, &url, vec![], "");
         if resp.contains("error"){return Err(resp);}
         let map: HashMap<&str,bool> = serde_json::from_str(&resp).unwrap();
         Ok(*map.get("value").unwrap())
@@ -114,7 +120,7 @@ impl Element{
     /// by chrome and geckodrivers, so this method will only be returning errors for now
     pub fn get_computed_role(&self)->Result<String,String>{
         let url = format!("{}/computedrole",self.element_url);
-        let resp = send_and_read_body(Method::GET, &url, vec![], "");
+        let resp = send_and_read_body(&self.ip,&self.port,Method::GET, &url, vec![], "");
         if resp.contains("error"){return Err(resp);}
         let map: HashMap<&str,String> = serde_json::from_str(&resp).unwrap();
         Ok((*map.get("value").unwrap()).clone())
@@ -122,7 +128,7 @@ impl Element{
     ///See above
     pub fn get_computed_label(&self)->Result<String,String>{
         let url = format!("{}/computedlabel",self.element_url);
-        let resp = send_and_read_body(Method::GET, &url, vec![], "");
+        let resp = send_and_read_body(&self.ip,&self.port,Method::GET, &url, vec![], "");
         if resp.contains("error"){return Err(resp);}
         let map: HashMap<&str,String> = serde_json::from_str(&resp).unwrap();
         Ok((*map.get("value").unwrap()).clone())
@@ -130,7 +136,7 @@ impl Element{
     pub fn click(&self)->Result<(),String>{
         let body = r#"{}"#;
         let url = format!("{}/click",self.element_url);
-        let resp = send_and_read_body(Method::POST, &url, cont_length_header(&body), &body);
+        let resp = send_and_read_body(&self.ip,&self.port,Method::POST, &url, cont_length_header(&body), &body);
         if resp.contains("error"){return Err(resp);}
         Ok(())
 
@@ -139,7 +145,7 @@ impl Element{
     pub fn clear_element(&self)->Result<(),String>{
         let body = r#"{}"#;
         let url = format!("{}/clear",self.element_url);
-        let resp = send_and_read_body(Method::POST, &url, cont_length_header(&body), &body);
+        let resp = send_and_read_body(&self.ip,&self.port,Method::POST, &url, cont_length_header(&body), &body);
         if resp.contains("error"){return Err(resp);}
         Ok(())
     }
@@ -156,7 +162,7 @@ impl Element{
     pub fn send_keys(&self,message:&str)->Result<(),String>{
         let body = format!(r#"{{"text":"{}"}}"#,message);
         let url = format!("{}/value",self.element_url);
-        let resp = send_and_read_body(Method::POST, &url, cont_length_header(&body), &body);
+        let resp = send_and_read_body(&self.ip,&self.port,Method::POST, &url, cont_length_header(&body), &body);
         if resp.contains("error"){return Err(resp);}
         Ok(())
 

@@ -9,17 +9,19 @@ Provides basic functionality for UI automated tests and scripts.
 
 ## Requirements
 
-* Selenium server running on localhost:4444
+* For local tests - selenium server should be running on localhost:4444
 * A chromedriver, geckodriver or safari
 
 ## TO DO
 
+* Add methods to adjust session capabilities 
 * Add useful methods which are available in other Selenium implementations
 
 ## Contributions
 Any contributions, bug reports and improvement suggestions are much anticipated and appreciated!
 
 ### Release notes:
+* v 0.1.6 - Basic remote session support
 * v 0.1.5 - SafariOptions support
 * v 0.1.4 - Basic Safari support
 * v 0.1.3 - FirefoxOptions support

@@ -30,9 +30,11 @@ pub enum BrowserName{
 /// Main crate struct
 /// 
 /// Contains methods for manipulating the browser session, internally making requests to the selenium server.
-/// 
+/// All methods that create local sessions imply that the selenium server is running on port 4444
 #[derive(Debug)]
 pub struct Browser{
+    ip: String,
+    port:String,
     session_url: String, //The session/ url for constructing other urls
     go_to_url: String, //The url to a website of the test
     timeouts_url: String,
@@ -77,11 +79,35 @@ impl Browser{
     /// ```
     pub fn start_session(browser: BrowserName, args:Vec<&str>)->Browser{
         let req_body = create_session_body_json(browser,args);
-        let response = send_request(Method::POST, "wd/hub/session", cont_length_header(&req_body), &req_body).unwrap();
+        let response = send_request("127.0.0.1","4444",Method::POST, "wd/hub/session", cont_length_header(&req_body), &req_body).unwrap();
         let resp_body = resp_body(response).unwrap();
         let val: Value = serde_json::from_str(&resp_body).unwrap();
         let sess_id = val.value.sessionId;
-        generate_browser_links(&sess_id)
+        generate_browser_links("127.0.0.1","4444",&sess_id)
+    }
+    ///Method to construct the Browser instance with basic remote session.
+    pub fn start_remote_session(browser: BrowserName,platform:&str,ip:&str,port:&str)->Result<Browser,String>{
+        let browser = match browser{
+            BrowserName::Chrome=>"chrome",
+            BrowserName::Firefox=>"firefox",
+            BrowserName::Safari=>"safari",
+        };
+        let req_body = format!(r#"{{
+            "capabilities": {{
+                "alwaysMatch": {{
+                    "platformName": "{}"
+                }},
+                "firstMatch": [
+                    {{"browserName": "{}"}}
+                ]
+            }}
+        }}
+        "#,platform,browser);
+        let response = send_request(ip,port,Method::POST, "wd/hub/session", cont_length_header(&req_body), &req_body).unwrap();
+        let resp_body = resp_body(response).unwrap();
+        let val: Value = serde_json::from_str(&resp_body).unwrap();
+        let sess_id = val.value.sessionId;
+        Ok(generate_browser_links(ip,port,&sess_id))
     }
     ///Method to start the session customized with ChromeOptions
     /// 
@@ -100,64 +126,64 @@ impl Browser{
     /// ```
     pub fn start_chrome_session_with_options(options:ChromeOptions)->Result<Browser,String>{
         let body = create_json_body_for_session_with_chrome_options(options);
-        let resp = send_and_read_body (Method::POST, "wd/hub/session", cont_length_header(&body), &body);
+        let resp = send_and_read_body ("127.0.0.1","4444",Method::POST, "wd/hub/session", cont_length_header(&body), &body);
         if resp.contains("error"){return Err(resp);}
         let val: Value = serde_json::from_str(&resp).unwrap();
         let sess_id = val.value.sessionId;
-        Ok(generate_browser_links(&sess_id))
+        Ok(generate_browser_links("127.0.0.1","4444",&sess_id))
     }
     /// Method to start the Firefox session adjusted with FirefoxOptions
     /// Works similar to the ChromeOptions. For more info please check the FirefoxOptions docs.
     pub fn start_firefox_session_with_options(options:FirefoxOptions)->Result<Browser,String>{
         let body = create_json_body_for_session_with_firefox_options(options);
-        let resp = send_and_read_body (Method::POST, "wd/hub/session", cont_length_header(&body), &body);
+        let resp = send_and_read_body ("127.0.0.1","4444",Method::POST, "wd/hub/session", cont_length_header(&body), &body);
         if resp.contains("error"){return Err(resp);}
         let val: Value = serde_json::from_str(&resp).unwrap();
         let sess_id = val.value.sessionId;
-        Ok(generate_browser_links(&sess_id))
+        Ok(generate_browser_links("127.0.0.1","4444",&sess_id))
     }
     /// Method to start the Safari with settings.
     /// Works similar to the ChromeOptions and FFOptions. For more info please check the SafariOptions docs.
     pub fn start_safari_session_with_options(options:SafariOptions)->Result<Browser,String>{
         let body = options.base_string;
-        let resp = send_and_read_body (Method::POST, "wd/hub/session", cont_length_header(&body), &body);
+        let resp = send_and_read_body("127.0.0.1","4444",Method::POST, "wd/hub/session", cont_length_header(&body), &body);
         if resp.contains("error"){return Err(resp);}
         let val: Value = serde_json::from_str(&resp).unwrap();
         let sess_id = val.value.sessionId;
-        Ok(generate_browser_links(&sess_id))
+        Ok(generate_browser_links("127.0.0.1","4444",&sess_id))
     }
 
     ///Open a webpage or a local file
     pub fn open(&self,uri:&str)->Result<(),String>{
         let body = format!(r#"{{"url":"{}"}}"#,uri);
-        let resp = send_request(Method::POST, &self.go_to_url, cont_length_header(&body), &body).unwrap();
+        let resp = send_request(&self.ip,&self.port,Method::POST, &self.go_to_url, cont_length_header(&body), &body).unwrap();
         if resp.contains("error"){return Err(resp);}
         Ok(())
     }
     ///Get the url of the current page.
     pub fn get_link(&self)->Result<String,String>{
-        let resp = resp_body(send_request(Method::GET, &self.go_to_url, vec![], "").unwrap()).unwrap();
+        let resp = resp_body(send_request(&self.ip,&self.port,Method::GET, &self.go_to_url, vec![], "").unwrap()).unwrap();
         if resp.contains("error"){return Err(resp);}
         Ok(parse_value(&resp).replace("\"",""))
     }
     ///Deletes current session. As the Browser struct needs dropping, 
     ///it is better to call drop() after this method in long-multibrowser scenarios.  
     pub fn close_browser(&mut self)->Result<(),String>{
-        let resp = send_request(Method::DELETE, &self.session_url, vec![], "").unwrap();
+        let resp = send_request(&self.ip,&self.port,Method::DELETE, &self.session_url, vec![], "").unwrap();
         if resp.contains("error"){return Err(resp);}
         self.session_url = String::from("");
         Ok(())
     }
     ///Returns the session timouts data
     pub fn get_timeouts(&self)->Result<Timeouts,String>{
-        let resp = send_and_read_body(Method::GET, &self.timeouts_url, vec![], "");
+        let resp = send_and_read_body(&self.ip,&self.port,Method::GET, &self.timeouts_url, vec![], "");
         if resp.contains("error"){return Err(resp);}
         Ok(serde_json::from_str(&parse_value(&resp)).unwrap())
     }
     ///Change the session timouts data
     pub fn set_timeouts(&self, timeouts: &Timeouts)->Result<(),&str>{
         let timeouts_json = serde_json::to_string(timeouts).unwrap();
-        if let Ok(mess)= send_request(Method::POST, &self.timeouts_url, cont_length_header(&timeouts_json), &timeouts_json){
+        if let Ok(mess)= send_request(&self.ip,&self.port,Method::POST, &self.timeouts_url, cont_length_header(&timeouts_json), &timeouts_json){
             if let Ok (body) = resp_body(mess){
                 if body.as_str() == r#"{"value":null}"#{
                     return Ok(())
@@ -169,19 +195,19 @@ impl Browser{
     ///Return to the previous page
     pub fn back(&self)->Result<(),String>{
         let body = r#"{"return":true}"#;
-        let resp = send_request(Method::POST,&self.back_url, cont_length_header(&body), &body).unwrap();
+        let resp = send_request(&self.ip,&self.port,Method::POST,&self.back_url, cont_length_header(&body), &body).unwrap();
         if resp.contains("error"){return Err(resp);}
         Ok(())
     }
     pub fn forward(&self)->Result<(),String>{
         let body = r#"{"forward":true}"#;
-        let resp = send_request(Method::POST,&self.forward_url, cont_length_header(&body), &body).unwrap();
+        let resp = send_request(&self.ip,&self.port,Method::POST,&self.forward_url, cont_length_header(&body), &body).unwrap();
         if resp.contains("error"){return Err(resp);}
         Ok(())
     }
     pub fn refresh(&self)->Result<(),&str>{
         let body = r#"{"refresh":true}"#;
-        if let Ok (mess) = send_request(Method::POST,&self.refresh_url, cont_length_header(&body), &body){
+        if let Ok (mess) = send_request(&self.ip,&self.port,Method::POST,&self.refresh_url, cont_length_header(&body), &body){
             if let Ok (body) = resp_body(mess){
                 if body.as_str()!=r#"{"value":null}"#{
                    return Err("The refresh did not succeed")
@@ -192,19 +218,19 @@ impl Browser{
     }
     ///Returns the title of the current tab
     pub fn get_title(&self)->Result<String,String>{
-        let json = resp_body(send_request(Method::GET, &self.title_url, vec![], "").unwrap()).unwrap();
+        let json = resp_body(send_request(&self.ip,&self.port,Method::GET, &self.title_url, vec![], "").unwrap()).unwrap();
         if json.contains("error"){return Err(json);}    
         Ok(parse_value(&json).replace("\"",""))
     }
     ///Returns the handle of the current window, which later may be used to switch to this window.
     pub fn get_window_handle(&self)->Result<String,String>{
-        let resp = send_and_read_body(Method::GET, &self.window_url, vec![], "");
+        let resp = send_and_read_body(&self.ip,&self.port,Method::GET, &self.window_url, vec![], "");
         if resp.contains("error"){return Err(resp);}
         Ok(parse_value(&resp).replace("\"",""))
     }
     ///Returns the handles of all open windows and tabs
     pub fn get_window_handles(&self)->Result<Vec<String>,String>{
-       let resp = send_and_read_body(Method::GET, &self.window_handles_url, vec![], "");
+       let resp = send_and_read_body(&self.ip,&self.port,Method::GET, &self.window_handles_url, vec![], "");
        if resp.contains("error"){return Err(resp);}
        let resp = parse_value(&resp);
        let res:Vec<String> = serde_json::from_str(&resp).unwrap();
@@ -213,7 +239,7 @@ impl Browser{
     ///Switches to the window with the passed id
     pub fn switch_to_window(&self, window_id: String)->Result<(),String>{
         let body = format!(r#"{{"handle":"{}"}}"#,window_id);
-        let resp = send_and_read_body(Method::POST, &self.window_url, cont_length_header(&body), &body);
+        let resp = send_and_read_body(&self.ip,&self.port,Method::POST, &self.window_url, cont_length_header(&body), &body);
         if resp.as_str()==r#"{"value":null}"#{
             Ok(())
         }else{Err(resp)}
@@ -224,7 +250,7 @@ impl Browser{
             NewWindowType::Tab=>r#"{"type":"tab"}"#,
             NewWindowType::Window=>r#"{"type":"window"}"#,
         };
-        let resp=send_and_read_body(Method::POST, &self.window_new_url, cont_length_header(&body), &body);
+        let resp=send_and_read_body(&self.ip,&self.port,Method::POST, &self.window_new_url, cont_length_header(&body), &body);
         if resp.contains("error"){return Err(resp);}
         let resp = parse_value(&resp);
         let map: HashMap<&str,String> = serde_json::from_str(&resp).unwrap();
@@ -234,7 +260,7 @@ impl Browser{
     }
     ///Closes the window and returns the vector of the remaining window handles
     pub fn close_window(&self)->Result<Vec<String>,String>{
-       let resp = send_and_read_body(Method::DELETE, &self.window_url, vec![], "");
+       let resp = send_and_read_body(&self.ip,&self.port,Method::DELETE, &self.window_url, vec![], "");
        if resp.contains("error"){return Err(resp);}
        let resp = parse_value(&resp);
        let res:Vec<String> = serde_json::from_str(&resp).unwrap();
@@ -244,7 +270,7 @@ impl Browser{
     /// you should call this method like this - switch_to_frame_by_id(1).
     pub fn switch_to_frame_by_id(&self, id: u64)->Result<(),String>{
         let body = format!(r#"{{"id":{}}}"#,id);
-        let resp = send_and_read_body(Method::POST, &self.frame_url, cont_length_header(&body), &body);
+        let resp = send_and_read_body(&self.ip,&self.port,Method::POST, &self.frame_url, cont_length_header(&body), &body);
         if resp.as_str()!=r#"{"value":null}"#{
             return Err(resp);
         }
@@ -252,7 +278,7 @@ impl Browser{
     }
     pub fn switch_to_frame_by_element(&self, element:Element)->Result<(),String>{
         let body = format!(r#"{{"id":{{"{}":"{}"}}}}"#,element.element_gr_id,element.element_id);
-        let resp = send_and_read_body(Method::POST, &self.frame_url, cont_length_header(&body), &body);
+        let resp = send_and_read_body(&self.ip,&self.port,Method::POST, &self.frame_url, cont_length_header(&body), &body);
         if resp.as_str()!=r#"{"value":null}"#{
             return Err(resp);
         }
@@ -261,19 +287,21 @@ impl Browser{
     }
     pub fn switch_to_parent_frame(&self)->Result<(),String>{
         let body = r#"{}"#;
-        let resp = send_and_read_body(Method::POST, &self.frame_parent_url, cont_length_header(&body), &body);
+        let resp = send_and_read_body(&self.ip,&self.port,Method::POST, &self.frame_parent_url, cont_length_header(&body), &body);
         if resp.as_str()!=r#"{"value":null}"#{
             return Err(resp);
         }
         Ok(())
     }
     pub fn get_active_element(&self)->Result<Element,String>{
-        let resp = send_and_read_body(Method::GET, &self.element_active_url, vec![], "");
+        let resp = send_and_read_body(&self.ip,&self.port,Method::GET, &self.element_active_url, vec![], "");
         if resp.contains("error"){return Err(resp);}
         let resp = parse_value(&resp);
         let map: HashMap<String,String> = serde_json::from_str(&resp).unwrap();
         let res = map.iter().next().unwrap();
         Ok(Element{
+            ip:self.ip.clone(),
+            port: self.port.clone(),
             element_gr_id:res.0.clone(),
             element_id:res.1.clone(),
             element_url: format!("{}/element/{}",self.session_url,res.1.clone()),
@@ -294,12 +322,14 @@ impl Browser{
     /// ```
     pub fn find_element(&self,loc_strategy:LocatorStrategy)->Result<Element,String>{
         let body = body_for_find_element(loc_strategy);
-        let resp = send_and_read_body(Method::POST, &self.element_url, cont_length_header(&body), &body);
+        let resp = send_and_read_body(&self.ip,&self.port,Method::POST, &self.element_url, cont_length_header(&body), &body);
         if resp.contains("error"){return Err(resp);}
         let resp = parse_value(&resp);
         let map: HashMap<String,String> = serde_json::from_str(&resp).unwrap();
         let res = map.iter().next().unwrap();
         Ok(Element{
+            ip:self.ip.clone(),
+            port: self.port.clone(),
             element_gr_id:res.0.clone(),
             element_id:res.1.clone(),
             element_url: format!("{}/element/{}",self.session_url,res.1.clone()),
@@ -308,7 +338,7 @@ impl Browser{
     pub fn find_elements(&self,loc_strategy:LocatorStrategy)->Result<Vec<Element>,String>{
         let mut result = vec![];
         let body = body_for_find_element(loc_strategy);
-        let resp=send_and_read_body(Method::POST, &self.elements_url, cont_length_header(&body), &body);
+        let resp=send_and_read_body(&self.ip,&self.port,Method::POST, &self.elements_url, cont_length_header(&body), &body);
         if resp.contains("error"){return Err(resp);}
         let resp = parse_value(&resp);
         let map: Vec<HashMap<String,String>> = serde_json::from_str(&resp).unwrap();
@@ -317,6 +347,8 @@ impl Browser{
             let element_ur = element_ur.clone();
             let res = i.iter().next().unwrap();
             result.push(Element{
+                ip:self.ip.clone(),
+                port: self.port.clone(),
             element_gr_id:res.0.clone(),
             element_id:res.1.clone(),
             element_url:format!("{}/{}",element_ur,res.1.clone()),
@@ -326,7 +358,7 @@ impl Browser{
     }
     ///Returns the WindowRect instance which contains the information about the position and size of the current window
     pub fn get_window_rect(&self)->Result<WindowRect,String>{
-        let resp = send_and_read_body(Method::GET, &self.window_rect_url, vec![], "");
+        let resp = send_and_read_body(&self.ip,&self.port,Method::GET, &self.window_rect_url, vec![], "");
         if resp.contains("error"){return Err(resp);}
         let map:HashMap<&str,WindowRect> = serde_json::from_str(&resp).unwrap();
         Ok(map.get("value").unwrap().clone())
@@ -334,7 +366,7 @@ impl Browser{
     ///Allow to resize the window and change it's position
     pub fn set_sindow_rect(&self, window_rect:&WindowRect)->Result<WindowRect,String>{
         let body = serde_json::to_string(window_rect).unwrap();
-        let resp = send_and_read_body(Method::POST, &self.window_rect_url, cont_length_header(&body), &body);
+        let resp = send_and_read_body(&self.ip,&self.port,Method::POST, &self.window_rect_url, cont_length_header(&body), &body);
         let resp = parse_value(&resp);
         let map:Result<WindowRect,serde_json::Error> = serde_json::from_str(&resp);
         match map{
@@ -347,7 +379,7 @@ impl Browser{
     }
     pub fn maximize_window(&self)->Result<WindowRect,String>{
         let body = r#"{}"#;
-        let resp = send_and_read_body(Method::POST, &self.window_maximize_url, cont_length_header(&body), &body);
+        let resp = send_and_read_body(&self.ip,&self.port,Method::POST, &self.window_maximize_url, cont_length_header(&body), &body);
         let resp = parse_value(&resp);
         if resp.contains("height")&&resp.contains("width"){
             let res: WindowRect = serde_json::from_str(&resp).unwrap();
@@ -357,7 +389,7 @@ impl Browser{
     }
     pub fn minimize_window(&self)->Result<WindowRect,String>{
         let body = r#"{}"#;
-        let resp = send_and_read_body(Method::POST, &self.window_minimize_url, cont_length_header(&body), &body);
+        let resp = send_and_read_body(&self.ip,&self.port,Method::POST, &self.window_minimize_url, cont_length_header(&body), &body);
         let resp = parse_value(&resp);
         if resp.contains("height")&&resp.contains("width"){
             let res: WindowRect = serde_json::from_str(&resp).unwrap();
@@ -366,7 +398,7 @@ impl Browser{
     }
     pub fn fullscreen(&self)->Result<WindowRect,String>{
         let body = r#"{}"#;
-        let resp = send_and_read_body(Method::POST, &self.window_fullscreen_url, cont_length_header(&body), &body);
+        let resp = send_and_read_body(&self.ip,&self.port,Method::POST, &self.window_fullscreen_url, cont_length_header(&body), &body);
         let resp = parse_value(&resp);
         if resp.contains("height"){
             Ok(serde_json::from_str(&resp).unwrap())
@@ -374,7 +406,7 @@ impl Browser{
     }
     ///Returns the page source code
     pub fn source(&self)->Result<String,String>{
-        let resp = send_and_read_body(Method::GET, &self.source_url, vec![], "");
+        let resp = send_and_read_body(&self.ip,&self.port,Method::GET, &self.source_url, vec![], "");
         if resp.contains("error"){return Err(resp);}
         let map:HashMap<&str,String> = serde_json::from_str(&resp).unwrap();
         Ok(map.get("value").unwrap().clone())
@@ -382,7 +414,7 @@ impl Browser{
     ///Return the vector with all the cookies that the browser is holding at the moment
     pub fn get_all_cookies(&self)->Result<Vec<Cookie>,String>{
         let mut result: Vec<Cookie> = vec![];
-        let resp = send_and_read_body(Method::GET, &self.cookie_url, vec![], "");
+        let resp = send_and_read_body(&self.ip,&self.port,Method::GET, &self.cookie_url, vec![], "");
         if resp.contains("error"){return Err(resp);}
         let map:HashMap<&str,Vec<serde_json::Value>> = serde_json::from_str(&resp).unwrap();
         for v in map.get("value").unwrap(){
@@ -393,7 +425,7 @@ impl Browser{
     ///Returns the information on a particular cookie
     pub fn get_cookie(&self,cookie_name:&str)->Result<Cookie,String>{
         let url = format!("{}/{}",self.cookie_url,cookie_name);
-        let resp = send_and_read_body(Method::GET, &url, vec![], "");
+        let resp = send_and_read_body(&self.ip,&self.port,Method::GET, &url, vec![], "");
         if resp.contains("domain")&&resp.contains("expiry")&&resp.contains("name"){
             let map:HashMap<&str,serde_json::Value> = serde_json::from_str(&resp).unwrap();
             let v = map.get(&"value").unwrap();
@@ -404,7 +436,7 @@ impl Browser{
     pub fn add_cookie(&self,cookie:Cookie)->Result<(),String>{
         let cook = serde_json::to_string(&cookie).unwrap();
         let body =format!(r#"{{"cookie": {} }}"#,cook);
-        let resp = send_and_read_body(Method::POST, &self.cookie_url, cont_length_header(&body), &body);
+        let resp = send_and_read_body(&self.ip,&self.port,Method::POST, &self.cookie_url, cont_length_header(&body), &body);
         if resp==r#"{"value":null}"#{
             return Ok(());
         }
@@ -412,14 +444,14 @@ impl Browser{
     }
     pub fn delete_cookie(&self,cookie_name:&str)->Result<(),String>{
         let uri = format!("{}/{}",self.cookie_url,cookie_name);
-        let resp = send_and_read_body(Method::DELETE, &uri, vec![], "");
+        let resp = send_and_read_body(&self.ip,&self.port,Method::DELETE, &uri, vec![], "");
         if resp==r#"{"value":null}"#{
             return Ok(());
         }
         Err(resp)
     }
     pub fn delete_all_cookies(&self)->Result<(),String>{
-        let resp = send_and_read_body(Method::DELETE, &self.cookie_url, vec![], "");
+        let resp = send_and_read_body(&self.ip,&self.port,Method::DELETE, &self.cookie_url, vec![], "");
         if resp==r#"{"value":null}"#{
             return Ok(());
         }
@@ -464,7 +496,7 @@ impl Browser{
     pub fn execute_sync(&self, script: &str, args: &Vec<&str>)->Result<String,String>{
         let args = gen_script_args(args);
         let body = format!(r#"{{"script":"{}","args":{}}}"#,script,args);
-        let resp = send_and_read_body(Method::POST, &self.execute_sync_url, cont_length_header(&body), &body);
+        let resp = send_and_read_body(&self.ip,&self.port,Method::POST, &self.execute_sync_url, cont_length_header(&body), &body);
         if resp.contains("error"){
             return Err(resp);
         }
@@ -474,7 +506,7 @@ impl Browser{
     pub fn execute_async(&self, script: &str, args: &Vec<&str>)->Result<String,String>{
         let args = gen_script_args(args);
         let body = format!(r#"{{"script":"{}","args":{}}}"#,script,args);
-        let resp = send_and_read_body(Method::POST, &self.execute_async_url, cont_length_header(&body), &body);
+        let resp = send_and_read_body(&self.ip,&self.port,Method::POST, &self.execute_async_url, cont_length_header(&body), &body);
         if resp.contains("error"){
             return Err(resp);
         }
@@ -493,22 +525,22 @@ impl Browser{
 
 impl Browser{
     pub fn dismiss_alert(&self)->Result<(),String>{
-        let resp = send_and_read_body(Method::POST, &self.alert_dismiss_url, cont_length_header("{}"), "{}");
+        let resp = send_and_read_body(&self.ip,&self.port,Method::POST, &self.alert_dismiss_url, cont_length_header("{}"), "{}");
         if resp ==r#"{"value":null}"#{Ok(())}else{Err(resp)}
     }
     pub fn allow_alert(&self)->Result<(),String>{
-        let resp = send_and_read_body(Method::POST, &self.alert_accept_url, cont_length_header("{}"), "{}");
+        let resp = send_and_read_body(&self.ip,&self.port,Method::POST, &self.alert_accept_url, cont_length_header("{}"), "{}");
         if resp ==r#"{"value":null}"#{Ok(())}else{Err(resp)}
     }
     pub fn get_alert_text(&self)->Result<String,String>{
-        let resp = send_and_read_body(Method::GET, &self.alert_text_url, vec![], "");
+        let resp = send_and_read_body(&self.ip,&self.port,Method::GET, &self.alert_text_url, vec![], "");
         if resp.contains("error"){return Err(resp);}
         let map:HashMap<&str,String> = serde_json::from_str(&resp).unwrap();
         Ok((*map.get("value").unwrap()).to_string())
     }
     pub fn send_alert_text(&self,text:&str)->Result<(),String>{
         let body =format!(r#"{{"text":{}}}"#,text) ;
-        let resp = send_and_read_body(Method::POST, &self.alert_dismiss_url, cont_length_header(&body), &body);
+        let resp = send_and_read_body(&self.ip,&self.port,Method::POST, &self.alert_dismiss_url, cont_length_header(&body), &body);
         if resp.contains("error"){return Err(resp);}
         Ok(())
     }
@@ -531,7 +563,7 @@ impl Browser{
         let mut actions = actions;
         actions.set_ids();
         let body = serde_json::to_string(&actions).unwrap();
-        let resp = send_and_read_body(Method::POST, &self.actions_url, cont_length_header(&body), &body);
+        let resp = send_and_read_body(&self.ip,&self.port,Method::POST, &self.actions_url, cont_length_header(&body), &body);
         if resp.contains("error"){return Err(resp);}
         Ok(())
     }
@@ -539,15 +571,17 @@ impl Browser{
     ///While the key actions are performed just after calling the perform_actions method,
     ///for instance, mouse actions are performed only after calling this method.
     pub fn release_actions(&self)->Result<(),String>{
-        let resp = send_and_read_body(Method::DELETE, &self.actions_url, vec![], "");
+        let resp = send_and_read_body(&self.ip,&self.port,Method::DELETE, &self.actions_url, vec![], "");
         if resp.contains("error"){return Err(resp);}
         Ok(())
     }
 }
 pub (self) mod utils{
     use super::*;
-    pub (super) fn generate_browser_links(sess_id:&str)->Browser{
+    pub (super) fn generate_browser_links(ip:&str,port:&str,sess_id:&str)->Browser{
         Browser{
+            port:String::from(port),
+            ip:String::from(ip),
             session_url:format!("wd/hub/session/{}",sess_id),
             go_to_url: format!("wd/hub/session/{}/url",sess_id),
             timeouts_url: format!("wd/hub/session/{}/timeouts",sess_id),
@@ -1578,6 +1612,13 @@ mod additional_tests{
         let res = br.open("https://vk.com");
         let res2 = br.close_browser();
         assert!(res.is_ok()&&res2.is_ok());
+    }
+    #[test]
+    fn rem_lin_chr() {
+        let mut br = Browser::start_remote_session(BrowserName::Chrome, "linux", "192.168.1.67","4444").unwrap();
+        br.open("https://vk.com").unwrap();
+        br.back().unwrap();
+        br.close_browser().unwrap();
     }
 }
 mod safari_tests{

@@ -14,15 +14,29 @@ pub enum LocatorStrategy{
     TAGNAME(&'static str),
     XPATH(&'static str)
 }
-pub(crate) fn send_request(method: Method, path: &str, headers: Vec<String>, body: &str)->Result<String,Box<dyn Error>> {
+pub(crate) fn send_request(ip:&str,port:&str,method: Method, path: &str, headers: Vec<String>, body: &str)->Result<String,Box<dyn Error>> {
     let request = create_req(method, path, headers, body);
-    let mut connection = TcpStream::connect("127.0.0.1:4444")?;
+    let address = format!("{}:{}",ip,port);
+    let mut connection = TcpStream::connect(address)?;
     connection.write(request.as_bytes())?;
     connection.flush()?;
     let buf = read_response_to_vec_u8(connection).unwrap();
     let st = String::from_utf8(buf).unwrap();
     Ok(st)    
 }
+/*
+pub(crate) fn send_request_remote(ip:&str,method: Method, path: &str, headers: Vec<String>, body: &str)->Result<String,Box<dyn Error>> {
+    let request = create_remote_req(ip,method, path, headers, body);
+    println!("{}",request);
+    let address = format!("{}:4444",ip);
+    let mut connection = TcpStream::connect(address)?;
+    connection.write(request.as_bytes())?;
+    connection.flush()?;
+    let buf = read_response_to_vec_u8(connection).unwrap();
+    let st = String::from_utf8(buf).unwrap();
+    Ok(st)    
+}*/
+
 pub(crate) fn send_request_screensh(method: Method, path: &str, headers: Vec<String>, body: &str)->Result<Vec<u8>,Box<dyn Error>> {
     let request = create_req(method, path, headers, body);
     let mut connection = TcpStream::connect("127.0.0.1:4444")?;
@@ -40,8 +54,8 @@ pub(crate) fn resp_body(response: String)->Result<String,&'static str>{
     } else {Err("Can't get the response body")}
 
 }
-pub (crate) fn send_and_read_body(method: Method, path: &str, headers: Vec<String>, body: &str)->String{
-    resp_body(send_request(method, path, headers, body).unwrap()).unwrap()
+pub (crate) fn send_and_read_body(ip:&str,port:&str,method: Method, path: &str, headers: Vec<String>, body: &str)->String{
+    resp_body(send_request(ip,port,method, path, headers, body).unwrap()).unwrap()
 }
 
 fn create_req(method: Method, path: &str, headers: Vec<String>, body: &str) -> String {
@@ -53,6 +67,31 @@ fn create_req(method: Method, path: &str, headers: Vec<String>, body: &str) -> S
     request.push_str(path);
     request.push_str(" HTTP/1.1\r\n");
     request.push_str("Host: 127.0.0.1\r\n");
+    if headers.len()>0{
+        for h in headers {
+            request.push_str(&h);
+            request.push_str("\r\n");
+        }
+    }
+    request.push_str("\r\n\r\n");
+    match method {
+        Method::POST => request.push_str(body),
+        _ => (),
+    }
+    request
+}
+fn create_remote_req(ip:&str, method: Method, path: &str, headers: Vec<String>, body: &str)->String {
+    let mut request = match &method {
+        Method::GET => String::from("GET /"),
+        Method::POST => String::from("POST /"),
+        Method::DELETE => String::from("DELETE /"),
+    };
+    request.push_str(path);
+    request.push_str(" HTTP/1.1\r\n");
+    request.push_str("Host: ");
+    request.push_str(ip);
+    request.push_str("\r\n");
+
     if headers.len()>0{
         for h in headers {
             request.push_str(&h);
@@ -227,6 +266,6 @@ fn get_req_creation() {
 }
 #[test]
 fn ge_t_status(){
-    let response = send_request(Method::GET, "wd/hub/status", vec![], "").unwrap();
+    let response = send_request("127.0.0.1","4444",Method::GET, "wd/hub/status", vec![], "").unwrap();
     assert!(response.contains("Server is running"));
 } 
