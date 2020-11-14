@@ -146,7 +146,6 @@ impl Browser{
     /// Works similar to the ChromeOptions and FFOptions. For more info please check the SafariOptions docs.
     pub fn start_safari_session_with_options(options:SafariOptions)->Result<Browser,String>{
         let body = create_json_body_for_session_with_safari_options(options);
-        //let body = options.base_string;
         let resp = send_and_read_body("127.0.0.1","4444",Method::POST, "wd/hub/session", cont_length_header(&body), &body);
         if resp.contains("error"){return Err(resp);}
         let val: Value = serde_json::from_str(&resp).unwrap();

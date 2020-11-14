@@ -41,7 +41,6 @@ impl SafariOptions{
 }
 // makes the dirty work with base string
 fn update_string(st: &mut String,text:&str){
-    let comma = ',' as u8;
     let len = st.len();
     if len>0{
         st.push(',');
@@ -49,16 +48,6 @@ fn update_string(st: &mut String,text:&str){
     }else{
         st.push_str(text);
     }
-    /*if (*st).as_bytes()[len-1]==comma{
-        st.push_str(text);
-    }else if len{
-        st.pop();
-        st.pop();
-        st.pop();
-        st.push(',');
-        st.push('\n');
-        st.push_str(text);
-    }*/
 }
 
 mod saf_gen{
