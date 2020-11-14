@@ -145,7 +145,8 @@ impl Browser{
     /// Method to start the Safari with settings.
     /// Works similar to the ChromeOptions and FFOptions. For more info please check the SafariOptions docs.
     pub fn start_safari_session_with_options(options:SafariOptions)->Result<Browser,String>{
-        let body = options.base_string;
+        let body = create_json_body_for_session_with_safari_options(options);
+        //let body = options.base_string;
         let resp = send_and_read_body("127.0.0.1","4444",Method::POST, "wd/hub/session", cont_length_header(&body), &body);
         if resp.contains("error"){return Err(resp);}
         let val: Value = serde_json::from_str(&resp).unwrap();
@@ -672,6 +673,20 @@ pub (self) mod utils{
                 ]
             }}
         }}"#,std::env::consts::OS,options);
+        base_string
+    }
+    pub (super) fn create_json_body_for_session_with_safari_options(saf_options:SafariOptions)->String{
+        let base_string = format!(r#"
+        {{
+            "capabilities":{{
+                "alwaysMatch":
+                    {{
+                        "platformName":"{}",
+                        "browserName":"safari",
+                        {}
+                    }}
+            }}
+        }}"#,std::env::consts::OS,saf_options.base_string);
         base_string
     }
     pub (super) fn gen_args(args:Vec<&str>)->String{

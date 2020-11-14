@@ -2,7 +2,7 @@
 /// 
 /// For more details please see https://www.w3.org/TR/webdriver/#proxy
 pub struct Proxy{
-    proxy_string: String
+    pub(crate) proxy_string: String
 }
 impl Proxy{
     pub fn new()->Self{

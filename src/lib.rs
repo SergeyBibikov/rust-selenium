@@ -13,6 +13,7 @@ mod chromeoptions;
 mod firefoxoptions;
 mod safarioptions;
 mod proxy;
+mod capabilities;
 
 pub use browser::*;
 pub use actions::*;
@@ -23,3 +24,4 @@ pub use chromeoptions::*;
 pub use firefoxoptions::*;
 pub use safarioptions::*;
 pub use proxy::*;
+pub use capabilities::*;
