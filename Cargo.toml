@@ -1,6 +1,6 @@
 [package]
 name = "selenium_webdriver"
-version = "0.1.6"
+version = "0.1.7"
 authors = ["Sergey Bibikov <sergey.bibikov.92@mail.ru>"]
 edition = "2018"
 description = "A crate to interact with the selenium server and write automated UI scripts and tests"

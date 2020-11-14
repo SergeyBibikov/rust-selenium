@@ -14,13 +14,13 @@ Provides basic functionality for UI automated tests and scripts.
 
 ## TO DO
 
-* Add methods to adjust session capabilities 
 * Add useful methods which are available in other Selenium implementations
 
 ## Contributions
 Any contributions, bug reports and improvement suggestions are much anticipated and appreciated!
 
 ### Release notes:
+* v 0.1.7 - Session capabilities support for local and remote sessions
 * v 0.1.6 - Basic remote session support
 * v 0.1.5 - SafariOptions support
 * v 0.1.4 - Basic Safari support

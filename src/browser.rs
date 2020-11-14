@@ -10,6 +10,7 @@ use super::specialkey::*;
 use super::chromeoptions::*;
 use super::firefoxoptions::*;
 use super::safarioptions::*;
+use super::capabilities::*;
 
 #[derive(Serialize,Deserialize)]
 struct Value{
@@ -85,7 +86,45 @@ impl Browser{
         let sess_id = val.value.sessionId;
         generate_browser_links("127.0.0.1","4444",&sess_id)
     }
-    ///Method to construct the Browser instance with basic remote session.
+    ///Allows to create a customized session with various capabilities. For details please check the docs for the Capabilities struct and its methods.
+    /// 
+    /// # Examples
+    /// ```
+    /// # use selenium_webdriver::*;
+    /// 
+    /// let mut ch_op = ChromeOptions::new();
+    /// ch_op.add_args(vec!["--headless","--window-size=500,1000"]);
+    /// ch_op.add_mobile_emulation(MobileDevice::standard_device("Nexus 6"));
+    /// 
+    /// let mut c = Capabilities::new(BrowserName::Chrome, "windows");
+    /// c.set_chrome_options(ch_op);
+    /// 
+    /// let mut br = Browser::start_session_with_capabilities(c).unwrap();
+    /// br.open("https://vk.com").unwrap();
+    /// br.take_screenshot("vk.png").unwrap();
+    /// br.close_browser().unwrap();
+    /// let res = std::fs::read("vk.png");
+    /// assert!(res.is_ok());
+    /// std::fs::remove_file("vk.png").unwrap();
+    /// ```
+    pub fn start_session_with_capabilities(capabilities: Capabilities)->Result<Browser,String>{
+        let body = capabilities.cap_string;
+        let response = send_request("127.0.0.1","4444",Method::POST, "wd/hub/session", cont_length_header(&body), &body).unwrap();
+        let resp_body = resp_body(response).unwrap();
+        let val: Value = serde_json::from_str(&resp_body).unwrap();
+        let sess_id = val.value.sessionId;
+        Ok(generate_browser_links("127.0.0.1","4444",&sess_id))
+    }
+    ///Does the same thing as the start_session_with_capabilities(),but for the remote session.
+    pub fn start_remote_session_with_capabilities(capabilities: Capabilities,ip:&str,port:&str)->Result<Browser,String>{
+        let body =capabilities.cap_string;
+        let response = send_request(ip,port,Method::POST, "wd/hub/session", cont_length_header(&body), &body).unwrap();
+        let resp_body = resp_body(response).unwrap();
+        let val: Value = serde_json::from_str(&resp_body).unwrap();
+        let sess_id = val.value.sessionId;
+        Ok(generate_browser_links(ip,port,&sess_id))
+    }    
+    ///Method to construct the Browser instance with basic remote session. Also intended to add chrome/firefox/safari options to the remote sessions.
     pub fn start_remote_session(browser: BrowserName,platform:&str,ip:&str,port:&str)->Result<Browser,String>{
         let browser = match browser{
             BrowserName::Chrome=>"chrome",
@@ -152,7 +191,6 @@ impl Browser{
         let sess_id = val.value.sessionId;
         Ok(generate_browser_links("127.0.0.1","4444",&sess_id))
     }
-
     ///Open a webpage or a local file
     pub fn open(&self,uri:&str)->Result<(),String>{
         let body = format!(r#"{{"url":"{}"}}"#,uri);
@@ -1632,6 +1670,35 @@ mod additional_tests{
         let mut br = Browser::start_remote_session(BrowserName::Chrome, "linux", "192.168.1.67","4444").unwrap();
         br.open("https://vk.com").unwrap();
         br.back().unwrap();
+        br.close_browser().unwrap();
+    }
+    #[test]
+    fn brow_cap() {
+        let mut ch_op = ChromeOptions::new();
+        ch_op.add_args(vec!["--headless","--window-size=500,1000"]);
+        ch_op.add_mobile_emulation(MobileDevice::standard_device("Nexus 6"));
+        let mut c = Capabilities::new(BrowserName::Chrome, "windows");
+        c.set_chrome_options(ch_op);
+        let mut br = Browser::start_session_with_capabilities(c).unwrap();
+        br.open("https://vk.com").unwrap();
+        br.take_screenshot("vk.png").unwrap();
+        br.close_browser().unwrap();
+        let res = std::fs::read("vk.png");
+        assert!(res.is_ok());
+        std::fs::remove_file("vk.png").unwrap();
+    }
+    #[test]
+    fn brow_cap_remote() {
+        let mut ch_op = ChromeOptions::new();
+        ch_op.add_args(vec!["--headless","--window-size=500,1000"]);
+        ch_op.add_mobile_emulation(MobileDevice::standard_device("Nexus 6"));
+        let mut c = Capabilities::new(BrowserName::Chrome, "linux");
+        c.set_chrome_options(ch_op);
+        let mut br = Browser::start_remote_session_with_capabilities(c,"192.168.1.67","4444").unwrap();
+        br.open("https://vk.com").unwrap();
+        br.open("https://github.com").unwrap();
+        let link = br.get_link().unwrap();
+        assert!(link.contains("hub"));
         br.close_browser().unwrap();
     }
 }

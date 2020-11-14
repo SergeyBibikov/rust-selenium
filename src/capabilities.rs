@@ -46,6 +46,7 @@ impl Capabilities{
         self
     }
     pub fn set_safari_options(&mut self, options:SafariOptions)->&mut Self{
+        update(&mut self.cap_string,&options.base_string);
         self
     }
     pub fn set_browser_version(&mut self, version: &str)->&mut Self{
@@ -130,6 +131,17 @@ mod capab_tests{
         assert_eq!(x,res_st);
     }
     #[test]
+    fn cap_saf_ops() {
+        let mut saf_op = SafariOptions::new();
+        saf_op.enable_automatic_profiling();
+        saf_op.enable_diagnose();
+        saf_op.enable_automatic_inspection();
+        let mut c = Capabilities::new(BrowserName::Safari, "macos");
+        c.set_safari_options(saf_op);
+        c.disable_window_rect();
+        println!("{}",c.cap_string);
+    }
+    #[test]
     fn cap_all() {
         let mut cap = Capabilities::new(BrowserName::Firefox, "windows");
         let t = Timeouts::new();
@@ -142,6 +154,9 @@ mod capab_tests{
         .set_http_proxy("host:port")
         .set_ssl_proxy("host:port")
         .set_socks_proxy("host:port");
+        let mut ff_op = FirefoxOptions::new();
+        ff_op.add_log(LogLevel::Info).add_binary("C:\\User\\Me\\bin")
+        .add_prefs(r#"{"one pref":"one pref val"}"#);
         cap
         .enable_insecure_certs()
         .disable_window_rect()
@@ -150,10 +165,10 @@ mod capab_tests{
         .set_proxy(prox)
         .set_unhandled_prompt_behavior("do something!!")
         .set_pageload_strategy("the best strategy")
-        .set_browser_version("86.0.0.1");
+        .set_browser_version("86.0.0.1")
+        .set_firefox_options(ff_op);
         let len = cap.cap_string.len();
         let last = &cap.cap_string[len-4..];
-        //println!("{}",last.contains(","));
         assert!(!last.contains(","));
     }
 }
