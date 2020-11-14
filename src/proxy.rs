@@ -1,5 +1,6 @@
-///Utility struct for capabilities
+///Utility struct for session capabilities defining the proxy settings
 /// 
+/// For more details please see https://www.w3.org/TR/webdriver/#proxy
 pub struct Proxy{
     proxy_string: String
 }
@@ -9,6 +10,7 @@ impl Proxy{
             proxy_string: String::from("{"),
         }
     }
+    ///Indicates the type of proxy configuration.
     pub fn set_proxy_type(&mut self, proxy_type: ProxyType)->&mut Self{
         let text = match proxy_type{
             ProxyType::Pac=>r#""proxyType":"pac"}"#,
@@ -20,37 +22,44 @@ impl Proxy{
         construct_the_str(&mut self.proxy_string,text);
         self
     }
+    ///Defines the URL for a proxy auto-config file if proxyType is equal to "pac".
     pub fn set_proxy_autoconfig_url(&mut self,url: &str)->&mut Self{
         let text =format!(r#""proxyAutoconfigUrl":"{}"}}"#,url);
         construct_the_str(&mut self.proxy_string, &text);
         self
     }
+    ///Defines the proxy host for FTP traffic when the proxyType is "manual".
     pub fn set_ftp_proxy(&mut self,host_and_port:&str)->&mut Self{
         let text =format!(r#""ftpProxy":"{}"}}"#,host_and_port);
         construct_the_str(&mut self.proxy_string,&text);
         self
     }
+    ///Defines the proxy host for HTTP traffic when the proxyType is "manual".
     pub fn set_http_proxy(&mut self,host_and_port:&str)->&mut Self{
         let text =format!(r#""httpProxy":"{}"}}"#,host_and_port);
         construct_the_str(&mut self.proxy_string,&text);
         self
     }
+    ///Lists the address for which the proxy should be bypassed when the proxyType is "manual".
     pub fn set_no_proxy(&mut self, exceptions: Vec<&str>)->&mut Self{
         let v2s = from_vec_to_str(exceptions);
         let text =format!(r#""noProxy":{}}}"#,v2s);
         construct_the_str(&mut self.proxy_string,&text);
         self
     }
+    ///Defines the proxy host for encrypted TLS traffic when the proxyType is "manual".
     pub fn set_ssl_proxy(&mut self,host_and_port:&str)->&mut Self{
         let text =format!(r#""sslProxy":"{}"}}"#,host_and_port);
         construct_the_str(&mut self.proxy_string,&text);
         self
     }
+    ///Defines the proxy host for a SOCKS proxy when the proxyType is "manual".
     pub fn set_socks_proxy(&mut self,host_and_port:&str)->&mut Self{
         let text =format!(r#""socksProxy":"{}"}}"#,host_and_port);
         construct_the_str(&mut self.proxy_string,&text);
         self
     }
+    ///Defines the SOCKS proxy version when the proxyType is "manual".
     pub fn set_socks_version(&mut self,version: u8)->&mut Self{
         let text = format!(r#""socksVersion":{}}}"#,version);
         construct_the_str(&mut self.proxy_string,&text);
