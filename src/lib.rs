@@ -4,24 +4,24 @@
 //! and write automated UI tests in Rust.
 //! To start using it, you need to have the selenium server running on localhost:4444 and chromedriver or geckodriver
 //! be present in your path
-mod reqs;
-mod browser;
-mod element;
 mod actions;
-mod specialkey;
-mod chromeoptions;
-mod firefoxoptions;
-mod safarioptions;
-mod proxy;
+mod browser;
 mod capabilities;
+mod chromeoptions;
+mod element;
+mod firefoxoptions;
+mod proxy;
+mod reqs;
+mod safarioptions;
+mod specialkey;
 
-pub use browser::*;
 pub use actions::*;
-pub use element::*;
-pub use specialkey::*;
-pub use reqs::*;
-pub use chromeoptions::*;
-pub use firefoxoptions::*;
-pub use safarioptions::*;
-pub use proxy::*;
+pub use browser::*;
 pub use capabilities::*;
+pub use chromeoptions::*;
+pub use element::*;
+pub use firefoxoptions::*;
+pub use proxy::*;
+pub use reqs::*;
+pub use safarioptions::*;
+pub use specialkey::*;

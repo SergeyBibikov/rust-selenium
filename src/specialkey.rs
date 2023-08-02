@@ -1,5 +1,5 @@
 ///Keyboard special keys
-pub enum SpecialKey{
+pub enum SpecialKey {
     ShiftLeft,
     ShiftRight,
     LeftCtrl,
@@ -69,10 +69,10 @@ pub enum SpecialKey{
     NumpadMultiply,
     NumpadSubtract,
 }
-pub enum MouseButton{
+pub enum MouseButton {
     Left,
     Middle,
     Right,
     X1Back,
-    X2Forward
+    X2Forward,
 }
